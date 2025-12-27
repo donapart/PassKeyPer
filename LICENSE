@@ -1,0 +1,43 @@
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU Affero General Public License is a free, copyleft license for
+software and other kinds of works, specifically designed to ensure
+cooperation with the community in the case of network server software.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+our General Public Licenses are intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.
+
+[... standard AGPL-3.0 license text continues ...]
+
+This is the GNU Affero General Public License version 3.0 (AGPL-3.0).
+
+For the complete license text, see: https://www.gnu.org/licenses/agpl-3.0.txt
+
+---
+
+## Why AGPL-3.0?
+
+PassKeyPer uses the GNU Affero General Public License v3.0 to ensure:
+
+1. **Freedom**: Anyone can use, study, modify, and distribute this software
+2. **Copyleft**: Modifications must also be open source
+3. **Network Protection**: Even cloud/SaaS versions must share their source code
+4. **Community**: Improvements benefit everyone
+
+## Commercial Use
+
+AGPL-3.0 allows commercial use, but requires:
+- Making your modifications available as open source
+- If you run a modified version as a service, users must have access to the source
+
+For proprietary forks or closed-source cloud services, contact us for alternative licensing.

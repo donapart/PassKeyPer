@@ -1,0 +1,35 @@
+{
+    "name": "@passkeyper/storage",
+    "version": "0.1.0",
+    "description": "Local storage layer for PassKeyPer vault",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "dev": "tsup --watch",
+        "build": "tsup",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "type-check": "tsc --noEmit",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "@passkeyper/core": "workspace:*",
+        "better-sqlite3": "^9.2.2",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.8",
+        "@types/uuid": "^9.0.7",
+        "tsup": "^8.0.1",
+        "typescript": "^5.3.0",
+        "vitest": "^1.0.4"
+    }
+}
