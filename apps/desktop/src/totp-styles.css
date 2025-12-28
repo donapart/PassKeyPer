@@ -1,0 +1,154 @@
+/* TOTP Component Styles */
+
+.totp-container {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.totp-code-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.totp-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    transition: color 0.3s;
+}
+
+.totp-copy-btn {
+    padding: 8px;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+
+.totp-copy-btn:hover {
+    background: #334155;
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+}
+
+.totp-timer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.timer-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 50px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 1s linear;
+    border-radius: 3px;
+}
+
+.totp-issuer {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.totp-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-size: 14px;
+    padding: 16px;
+}
+
+/* TOTP Setup */
+
+.totp-setup {
+    padding: 24px;
+    background: #1e293b;
+    border-radius: 12px;
+}
+
+.totp-setup h3 {
+    margin: 0 0 20px 0;
+    color: #f1f5f9;
+    font-size: 18px;
+}
+
+.setup-section {
+    margin-bottom: 16px;
+}
+
+.label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #cbd5e1;
+}
+
+.divider {
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+    margin: 20px 0;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    height: 1px;
+    background: #334155;
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.setup-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.error-message {
+    padding: 12px;
+    background: #7f1d1d;
+    border: 1px solid #991b1b;
+    border-radius: 6px;
+    color: #fca5a5;
+    font-size: 13px;
+    margin: 16px 0;
+}

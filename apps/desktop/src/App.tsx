@@ -4,13 +4,25 @@ import { LoginScreen } from './components/LoginScreen'
 import { Sidebar } from './components/Sidebar'
 import { VaultView } from './components/VaultView'
 import { SettingsModal } from './components/SettingsModal'
+import { ImportModal } from './components/ImportModal'
+import { ExportModal } from './components/ExportModal'
 import { ToastContainer } from './components/Toast'
 import { useAppStore } from './store/app-store'
 import { useAutoLock } from './hooks/useAutoLock'
 import { useKeyboardShortcuts, shortcuts } from './hooks/useKeyboardShortcuts'
 
 function App() {
-    const { isAuthenticated, isLocked, setVaults, setCurrentVault, setIsLocked } = useAppStore()
+    const {
+        isAuthenticated,
+        isLocked,
+        setVaults,
+        setCurrentVault,
+        setIsLocked,
+        items,
+        setItems,
+        showImportModal,
+        showExportModal,
+    } = useAppStore()
     const [showSettings, setShowSettings] = useState(false)
 
     const showLogin = !isAuthenticated || isLocked
@@ -76,6 +88,17 @@ const loadVaults = async () => {
     }
 }
 
+const handleImport = async (importedItems: any[]) => {
+    try {
+        // TODO: Save imported items to vault
+        // For now, just update state
+        setItems([...items, ...importedItems])
+        console.log('Imported items:', importedItems)
+    } catch (error) {
+        console.error('Failed to import items:', error)
+    }
+}
+
 return (
     <div className="h-screen flex flex-col bg-dark-900">
         <TitleBar />
@@ -91,6 +114,19 @@ return (
 
         {/* Modals */}
         <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
+        <ImportModal
+            isOpen={showImportModal}
+            onClose={() => useAppStore.setState({ showImportModal: false })}
+            onImport={handleImport}
+            existingItems={items}
+        />
+
+        <ExportModal
+            isOpen={showExportModal}
+            onClose={() => useAppStore.setState({ showExportModal: false })}
+            items={items}
+        />
 
         {/* Toast notifications */}
         <ToastContainer />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { X, Copy, Check, Eye, EyeOff, Star, Trash2, Edit2, ExternalLink } from 'lucide-react'
+import { TOTPDisplay } from './TOTPDisplay'
 
 interface ItemDetailModalProps {
     isOpen: boolean
@@ -74,8 +75,8 @@ export function ItemDetailModal({ isOpen, onClose, itemId, onEdit, onDelete }: I
                         >
                             <Star
                                 className={`w-5 h-5 ${item?.metadata?.favorite
-                                        ? 'text-yellow-500 fill-yellow-500'
-                                        : 'text-dark-400'
+                                    ? 'text-yellow-500 fill-yellow-500'
+                                    : 'text-dark-400'
                                     }`}
                             />
                         </button>
@@ -201,6 +202,27 @@ export function ItemDetailModal({ isOpen, onClose, itemId, onEdit, onDelete }: I
                                 </div>
                             </div>
                         )}
+
+                        {/* TOTP - Auto-detect from custom fields */}
+                        {item.customFields?.find((f: any) =>
+                            f.name.toLowerCase().includes('totp') ||
+                            f.name.toLowerCase().includes('2fa') ||
+                            f.name.toLowerCase().includes('secret')
+                        ) && (() => {
+                            const totpField = item.customFields.find((f: any) =>
+                                f.name.toLowerCase().includes('totp') ||
+                                f.name.toLowerCase().includes('2fa') ||
+                                f.name.toLowerCase().includes('secret')
+                            )
+                            return (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                                        Two-Factor Authentication (TOTP)
+                                    </label>
+                                    <TOTPDisplay secret={totpField.value} />
+                                </div>
+                            )
+                        })()}
 
                         {/* Notes */}
                         {item.notes && (

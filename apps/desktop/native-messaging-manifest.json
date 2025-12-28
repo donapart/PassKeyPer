@@ -1,0 +1,10 @@
+{
+    "name": "com.passkeyper.native",
+    "description": "PassKeyPer Native Messaging Host",
+    "path": "PLACEHOLDER_PATH",
+    "type": "stdio",
+    "allowed_origins": [
+        "chrome-extension://EXTENSION_ID/",
+        "moz-extension://EXTENSION_ID/"
+    ]
+}

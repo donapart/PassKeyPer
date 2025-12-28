@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Vault, ChevronDown, Plus, FolderPlus, Lock } from 'lucide-react'
+import { Vault, ChevronDown, Plus, FolderPlus, Lock, Download, Upload } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 
 export function Sidebar() {
@@ -115,6 +115,26 @@ export function Sidebar() {
 
             {/* Footer */}
             <div className="p-4 border-t border-dark-800 space-y-2">
+                {/* Import/Export Buttons */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                    <button
+                        onClick={() => useAppStore.setState({ showImportModal: true })}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-lg transition-colors text-blue-400"
+                        title="Import passwords"
+                    >
+                        <Upload className="w-4 h-4" />
+                        <span className="text-sm font-medium">Import</span>
+                    </button>
+                    <button
+                        onClick={() => useAppStore.setState({ showExportModal: true })}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 rounded-lg transition-colors text-purple-400"
+                        title="Export passwords"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span className="text-sm font-medium">Export</span>
+                    </button>
+                </div>
+
                 <button
                     onClick={handleLockVault}
                     className="w-full flex items-center gap-3 px-3 py-2 hover:bg-dark-800 rounded-lg transition-colors text-yellow-500"

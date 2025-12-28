@@ -1,0 +1,30 @@
+{
+    "name": "@passkeyper/sync",
+    "version": "0.1.0",
+    "description": "Cloud synchronization service for PassKeyPer",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "type-check": "tsc --noEmit"
+    },
+    "keywords": [
+        "passkeyper",
+        "sync",
+        "cloud",
+        "websocket"
+    ],
+    "author": "PassKeyPer Team",
+    "license": "AGPL-3.0",
+    "dependencies": {
+        "ws": "^8.14.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "@types/ws": "^8.5.9",
+        "tsup": "^8.0.0",
+        "typescript": "^5.3.0"
+    }
+}

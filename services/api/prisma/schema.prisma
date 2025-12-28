@@ -1,0 +1,173 @@
+// Prisma Schema for PassKeyPer Cloud
+// PostgreSQL database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User accounts
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  emailVerified DateTime?
+  
+  // Encrypted authentication data
+  authSalt String // For Argon2id
+  authHash String // Hashed master password (for server verification)
+  
+  // Encryption keys (encrypted with derived key)
+  encryptedPrivateKey String
+  publicKey String
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?
+  
+  // Relations
+  vaults Vault[]
+  devices Device[]
+  sessions Session[]
+  shareInvites ShareInvite[]
+  
+  @@index([email])
+}
+
+// User devices (for multi-device sync)
+model Device {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name String
+  type String // desktop, mobile, web, extension
+  platform String? // windows, macos, linux, ios, android
+  
+  lastSyncAt DateTime?
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+}
+
+// User sessions
+model Session {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token String @unique
+  deviceId String?
+  
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// Vaults
+model Vault {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Encrypted vault data
+  name String // Encrypted
+  type String // personal, work, shared
+  encryptedKey String // Vault key encrypted with user's public key
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  items VaultItem[]
+  shares VaultShare[]
+  
+  @@index([userId])
+}
+
+// Vault items (encrypted)
+model VaultItem {
+  id String @id @default(cuid())
+  vaultId String
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  
+  // Encrypted data (entire item encrypted as blob)
+  encryptedData String @db.Text
+  
+  // Metadata (for sync)
+  version Int @default(1)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Conflict resolution
+  deviceId String?
+  conflictsWith String?
+  
+  @@index([vaultId])
+  @@index([updatedAt])
+}
+
+// Vault sharing
+model VaultShare {
+  id String @id @default(cuid())
+  vaultId String
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  
+  sharedWithEmail String
+  permission String // read, write, admin
+  
+  // Encrypted vault key for recipient
+  encryptedVaultKey String
+  
+  acceptedAt DateTime?
+  createdAt DateTime @default(now())
+  
+  @@index([vaultId])
+  @@index([sharedWithEmail])
+  @@unique([vaultId, sharedWithEmail])
+}
+
+// Share invitations
+model ShareInvite {
+  id String @id @default(cuid())
+  inviterId String
+  inviter User @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  
+  recipientEmail String
+  vaultId String
+  permission String
+  
+  token String @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([recipientEmail])
+  @@index([token])
+}
+
+// Sync log (for conflict resolution)
+model SyncLog {
+  id String @id @default(cuid())
+  
+  userId String
+  deviceId String
+  vaultId String
+  itemId String
+  
+  action String // create, update, delete
+  version Int
+  timestamp DateTime @default(now())
+  
+  @@index([userId, vaultId])
+  @@index([timestamp])
+}

@@ -50,6 +50,10 @@ interface AppState {
     sidebarCollapsed: boolean
     toggleSidebar: () => void
 
+    // Modals
+    showImportModal: boolean
+    showExportModal: boolean
+
     // Search
     searchQuery: string
     setSearchQuery: (query: string) => void
@@ -79,6 +83,10 @@ export const useAppStore = create<AppState>((set) => ({
     setIsLocked: (locked) => set({ isLocked: locked }),
     sidebarCollapsed: false,
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+    // Modals
+    showImportModal: false,
+    showExportModal: false,
 
     // Search
     searchQuery: '',
