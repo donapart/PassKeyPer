@@ -45,7 +45,7 @@ app.use('/api/', limiter)
 
 // Routes
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISONString() })
+    res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
 app.use('/api/auth', authRouter)

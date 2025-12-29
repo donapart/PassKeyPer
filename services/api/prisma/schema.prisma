@@ -47,8 +47,10 @@ model Device {
   name String
   type String // desktop, mobile, web, extension
   platform String? // windows, macos, linux, ios, android
+  fingerprint String? // unique device identifier
   
   lastSyncAt DateTime?
+  lastSeenAt DateTime?
   createdAt DateTime @default(now())
   
   @@index([userId])

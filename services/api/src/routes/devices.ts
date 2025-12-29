@@ -4,14 +4,14 @@
 
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticateJWT } from '../middleware/auth'
+import { authenticate } from '../middleware/auth'
 import crypto from 'crypto'
 
 const router = express.Router()
 const prisma = new PrismaClient()
 
 // Apply auth middleware
-router.use(authenticateJWT)
+router.use(authenticate)
 
 /**
  * Register new device

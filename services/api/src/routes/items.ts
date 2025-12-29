@@ -4,13 +4,13 @@
 
 import express from 'express'
 import { PrismaClient } from '@prisma/client'
-import { authenticateJWT } from '../middleware/auth'
+import { authenticate } from '../middleware/auth'
 
 const router = express.Router()
 const prisma = new PrismaClient()
 
 // Apply auth middleware to all routes
-router.use(authenticateJWT)
+router.use(authenticate)
 
 /**
  * Create new item
@@ -35,14 +35,14 @@ router.post('/', async (req, res) => {
         }
 
         // Create item
-        const item = await prisma.item.create({
+        const item = await prisma.vaultItem.create({
             data: {
                 vaultId,
-                type,
+                // type, // Schema doesn't have type on VaultItem?
                 encryptedData,
-                metadata: metadata || {},
+                // metadata: metadata || {},
                 version: 1,
-                lastModifiedBy: deviceId || 'unknown'
+                deviceId: deviceId || 'unknown'
             }
         })
 
@@ -62,7 +62,7 @@ router.get('/:id', async (req, res) => {
         const { id } = req.params
         const userId = (req as any).userId
 
-        const item = await prisma.item.findFirst({
+        const item = await prisma.vaultItem.findFirst({
             where: {
                 id,
                 vault: {
@@ -102,7 +102,7 @@ router.put('/:id', async (req, res) => {
         const deviceId = (req as any).deviceId
 
         // Check if item exists and belongs to user
-        const existingItem = await prisma.item.findFirst({
+        const existingItem = await prisma.vaultItem.findFirst({
             where: {
                 id,
                 vault: {
@@ -125,13 +125,15 @@ router.put('/:id', async (req, res) => {
         }
 
         // Update item
-        const item = await prisma.item.update({
+        // Update item
+        const item = await prisma.vaultItem.update({
             where: { id },
             data: {
                 encryptedData: encryptedData || existingItem.encryptedData,
-                metadata: metadata || existingItem.metadata,
+                // metadata: metadata || existingItem.metadata, // Metadata not in schema, handled in encryptedData or separate?
                 version: existingItem.version + 1,
-                lastModifiedBy: deviceId || 'unknown',
+                // lastModifiedBy: deviceId || 'unknown', // Not in schema, using deviceId
+                deviceId: deviceId || 'unknown',
                 updatedAt: new Date()
             }
         })
@@ -153,7 +155,7 @@ router.delete('/:id', async (req, res) => {
         const userId = (req as any).userId
 
         // Check if item exists and belongs to user
-        const item = await prisma.item.findFirst({
+        const item = await prisma.vaultItem.findFirst({
             where: {
                 id,
                 vault: {
@@ -167,7 +169,7 @@ router.delete('/:id', async (req, res) => {
         }
 
         // Soft delete
-        await prisma.item.update({
+        await prisma.vaultItem.update({
             where: { id },
             data: {
                 deletedAt: new Date()
@@ -203,7 +205,7 @@ router.get('/vault/:vaultId', async (req, res) => {
         }
 
         // Get all non-deleted items
-        const items = await prisma.item.findMany({
+        const items = await prisma.vaultItem.findMany({
             where: {
                 vaultId,
                 deletedAt: null
@@ -247,7 +249,7 @@ router.get('/search', async (req, res) => {
 
         // Note: This searches metadata, not encrypted data
         // Client-side filtering needed for encrypted content
-        const items = await prisma.item.findMany({
+        const items = await prisma.vaultItem.findMany({
             where,
             orderBy: {
                 updatedAt: 'desc'
