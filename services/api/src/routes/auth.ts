@@ -8,6 +8,7 @@ import { z } from 'zod'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
+import crypto from 'crypto'
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -58,7 +59,7 @@ router.post('/register', async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: user.id, email: user.email, jti: crypto.randomUUID() },
             JWT_SECRET,
             { expiresIn: '30d' }
         )
