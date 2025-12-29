@@ -4,8 +4,21 @@
  */
 
 import browser from 'webextension-polyfill'
+import { nativeMessaging, getCredentials, saveCredentials, pingDesktop } from './native-messaging'
 
 console.log('PassKeyPer background service worker loaded')
+
+// Connect to desktop app on startup
+nativeMessaging.connect()
+
+// Check connection status
+pingDesktop().then(connected => {
+    if (connected) {
+        console.log('✓ Desktop app connected')
+    } else {
+        console.warn('⚠ Desktop app not available. Install and run PassKeyPer desktop app for full functionality.')
+    }
+})
 
 // Extension lifecycle
 browser.runtime.onInstalled.addListener((details) => {
@@ -59,18 +72,19 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
 // Handlers
 async function handleGetCredentials(payload: { url: string }) {
-    // TODO: Get credentials from desktop app via native messaging
-    // For now, return empty
+    // Get credentials from desktop app via native messaging
+    const credentials = await getCredentials(payload.url)
     return {
         success: true,
-        credentials: []
+        credentials
     }
 }
 
 async function handleSaveCredentials(payload: { url: string; username: string; password: string }) {
-    // TODO: Save credentials to desktop app
+    // Save credentials to desktop app
+    const success = await saveCredentials(payload.url, payload.username, payload.password)
     return {
-        success: true
+        success
     }
 }
 
