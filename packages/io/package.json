@@ -20,7 +20,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
-        "@passkeyper/core": "workspace:*",
+        "@passkeyper/core": "*",
         "papaparse": "^5.4.1"
     },
     "devDependencies": {

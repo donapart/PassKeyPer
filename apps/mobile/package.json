@@ -11,9 +11,9 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
-        "@passkeyper/core": "workspace:*",
-        "@passkeyper/totp": "workspace:*",
-        "@passkeyper/sync": "workspace:*",
+        "@passkeyper/core": "*",
+        "@passkeyper/totp": "*",
+        "@passkeyper/sync": "*",
         "@react-native-async-storage/async-storage": "^1.21.0",
         "@react-navigation/native": "^6.1.9",
         "@react-navigation/stack": "^6.3.20",

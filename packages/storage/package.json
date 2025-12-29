@@ -21,7 +21,7 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@passkeyper/core": "workspace:*",
+        "@passkeyper/core": "*",
         "better-sqlite3": "^9.2.2",
         "uuid": "^9.0.1"
     },
