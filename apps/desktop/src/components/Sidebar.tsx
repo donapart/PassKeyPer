@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import pkpLogo from '../assets/pkp_logo.png'
 import { Vault, ChevronDown, Plus, FolderPlus, Lock, Download, Upload } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 
@@ -38,6 +39,9 @@ export function Sidebar() {
         return (
             <div className="w-16 bg-dark-900 border-r border-dark-800 flex flex-col items-center py-4">
                 {/* Collapsed sidebar - just icons */}
+                <div className="mb-4 mt-2">
+                    <img src={pkpLogo} alt="PKP" className="w-8 h-8 rounded-lg" />
+                </div>
                 <button
                     onClick={() => useAppStore.setState({ sidebarCollapsed: false })}
                     className="w-10 h-10 flex items-center justify-center hover:bg-dark-800 rounded-lg mb-4"
@@ -51,6 +55,11 @@ export function Sidebar() {
     return (
         <div className="w-64 bg-dark-900 border-r border-dark-800 flex flex-col">
             {/* Header */}
+            <div className="p-4 flex items-center gap-3 border-b border-dark-800 bg-dark-900">
+                <img src={pkpLogo} alt="PassKeyPer" className="w-8 h-8 rounded-lg" />
+                <span className="font-bold text-lg tracking-tight text-white">PassKeyPer</span>
+            </div>
+
             <div className="p-4 border-b border-dark-800">
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">

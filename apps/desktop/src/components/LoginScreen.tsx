@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import pkpLogo from '../assets/pkp_logo.png'
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 
@@ -59,8 +60,12 @@ export function LoginScreen() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-                        <Lock className="w-8 h-8 text-white" />
+                    <div className="mb-6">
+                        <img
+                            src={pkpLogo}
+                            alt="PassKeyPer"
+                            className="w-24 h-24 rounded-2xl mx-auto shadow-2xl shadow-primary-500/20"
+                        />
                     </div>
                     <h1 className="text-3xl font-bold text-white mb-2">PassKeyPer</h1>
                     <p className="text-dark-400">
