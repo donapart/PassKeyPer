@@ -1,0 +1,43 @@
+{
+    "expo": {
+        "name": "PassKeyPer",
+        "slug": "passkeyper",
+        "version": "0.5.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "dark",
+        "splash": {
+            "image": "./assets/splash.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#0f172a"
+        },
+        "assetBundlePatterns": [
+            "**/*"
+        ],
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.passkeyper.app",
+            "infoPlist": {
+                "NSFaceIDUsageDescription": "PassKeyPer uses Face ID to unlock your vault securely."
+            }
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#0f172a"
+            },
+            "package": "com.passkeyper.app",
+            "permissions": [
+                "USE_BIOMETRIC",
+                "USE_FINGERPRINT"
+            ]
+        },
+        "web": {
+            "favicon": "./assets/favicon.png"
+        },
+        "plugins": [
+            "expo-local-authentication",
+            "expo-secure-store"
+        ]
+    }
+}

@@ -13,16 +13,22 @@ import {
     Modal,
 } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { useAppStore } from '../store/app-store'
+import { useMobileStore } from '../store/mobile-store'
+import { useSync } from '../hooks/useSync'
 
 interface VaultsScreenProps {
     navigation: any
 }
 
 export default function VaultsScreen({ navigation }: VaultsScreenProps) {
-    const { vaults, currentVault, setCurrentVault, createVault } = useAppStore()
+    const { vaults, currentVault, setCurrentVault, createVault } = useMobileStore()
+    const { fetchVaults } = useSync()
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [newVaultName, setNewVaultName] = useState('')
+
+    useEffect(() => {
+        fetchVaults()
+    }, [fetchVaults])
 
     const handleCreateVault = () => {
         if (newVaultName.trim()) {

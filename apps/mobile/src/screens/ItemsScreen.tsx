@@ -12,7 +12,8 @@ import {
     TextInput,
 } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { useAppStore } from '../store/app-store'
+import { useMobileStore } from '../store/mobile-store'
+import { useSync } from '../hooks/useSync'
 
 interface ItemsScreenProps {
     navigation: any
@@ -20,13 +21,19 @@ interface ItemsScreenProps {
 }
 
 export default function ItemsScreen({ navigation, route }: ItemsScreenProps) {
-    const { currentVault, items, searchQuery, setSearchQuery } = useAppStore()
+    const { currentVault, items, searchQuery, setSearchQuery } = useMobileStore()
+    const { fetchItems } = useSync()
     const [filteredItems, setFilteredItems] = useState(items)
 
     useEffect(() => {
         navigation.setOptions({
             title: currentVault?.name || 'Items',
         })
+
+        // Fetch items for current vault
+        if (currentVault?.id) {
+            fetchItems(currentVault.id)
+        }
     }, [currentVault])
 
     useEffect(() => {

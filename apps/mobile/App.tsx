@@ -31,10 +31,12 @@ const theme = {
     },
 }
 
+import { useMobileStore } from './src/store/mobile-store'
+
 const Stack = createStackNavigator()
 
 export default function App() {
-    const [isAuthenticated, setIsAuthenticated] = React.useState(false)
+    const { isAuthenticated } = useMobileStore()
 
     return (
         <SafeAreaProvider>
@@ -65,7 +67,6 @@ export default function App() {
                                 {(props) => (
                                     <AuthScreen
                                         {...props}
-                                        onAuthenticated={() => setIsAuthenticated(true)}
                                     />
                                 )}
                             </Stack.Screen>

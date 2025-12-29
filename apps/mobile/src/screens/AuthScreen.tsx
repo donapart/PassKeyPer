@@ -16,17 +16,16 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
-interface AuthScreenProps {
-    navigation: any
-    onAuthenticated: () => void
-}
+import { useMobileStore } from '../store/mobile-store'
 
-export default function AuthScreen({ navigation, onAuthenticated }: AuthScreenProps) {
+export default function AuthScreen({ navigation }: { navigation: any }) {
+    const { login, syncSettings } = useMobileStore()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isRegister, setIsRegister] = useState(false)
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false)
     const [biometricType, setBiometricType] = useState<string>('')
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
         checkBiometric()
@@ -56,9 +55,8 @@ export default function AuthScreen({ navigation, onAuthenticated }: AuthScreenPr
             })
 
             if (result.success) {
-                // Check if user exists in secure storage
-                // For now, just authenticate
-                onAuthenticated()
+                // In a real app, we would retrieve the encrypted password/token from SecureStore here
+                alert('Biometric auth successful (stub)')
             }
         } catch (error) {
             console.error('Biometric auth error:', error)
@@ -71,12 +69,44 @@ export default function AuthScreen({ navigation, onAuthenticated }: AuthScreenPr
             return
         }
 
-        // TODO: Implement actual authentication with @passkeyper/core
-        // For now, just authenticate
-        if (password.length >= 8) {
-            onAuthenticated()
-        } else {
-            alert('Password must be at least 8 characters')
+        setLoading(true)
+        try {
+            const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login'
+            const payload = isRegister
+                ? {
+                    email,
+                    authHash: password, // In production, use crypto.subtle.digest
+                    authSalt: 'mobile-salt',
+                    publicKey: 'mobile-pk',
+                    encryptedPrivateKey: 'mobile-sk'
+                }
+                : {
+                    email,
+                    authHash: password // In production, use crypto.subtle.digest
+                }
+
+            // Note: Android Emulator needs 10.0.2.2 usually, but syncSettings.apiUrl is configurable
+            const response = await fetch(`${syncSettings.apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Authentication failed')
+            }
+
+            if (data.token && data.user) {
+                login(data.user, data.token)
+                // Navigation handled by App.tsx state change
+            }
+        } catch (error: any) {
+            console.error(error)
+            alert(error.message || 'Error occurred')
+        } finally {
+            setLoading(false)
         }
     }
 

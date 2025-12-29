@@ -14,7 +14,7 @@ import {
     Clipboard,
 } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { useAppStore } from '../store/app-store'
+import { useMobileStore } from '../store/mobile-store'
 
 interface ItemDetailScreenProps {
     navigation: any
@@ -23,7 +23,10 @@ interface ItemDetailScreenProps {
 
 export default function ItemDetailScreen({ navigation, route }: ItemDetailScreenProps) {
     const { itemId } = route.params || {}
-    const { getItem, createItem, updateItem, deleteItem } = useAppStore()
+    const { items, createItem, updateItem, deleteItem } = useMobileStore()
+
+    // Helper to get item by ID
+    const getItem = (id: string) => items.find(item => item.id === id)
 
     const [isEditing, setIsEditing] = useState(!itemId)
     const [name, setName] = useState('')
