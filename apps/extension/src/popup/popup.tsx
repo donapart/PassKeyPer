@@ -15,12 +15,26 @@ interface Credential {
     url: string
 }
 
+type Tab = 'credentials' | 'generator' | 'settings'
+
 function Popup() {
     const [isLocked, setIsLocked] = useState(true)
     const [credentials, setCredentials] = useState<Credential[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [currentUrl, setCurrentUrl] = useState('')
     const [loading, setLoading] = useState(true)
+    const [activeTab, setActiveTab] = useState<Tab>('credentials')
+    const [toast, setToast] = useState<string | null>(null)
+
+    // Generator state
+    const [password, setPassword] = useState('')
+    const [length, setLength] = useState(16)
+    const [options, setOptions] = useState({
+        uppercase: true,
+        lowercase: true,
+        numbers: true,
+        symbols: true
+    })
 
     useEffect(() => {
         // Get current tab URL
@@ -32,7 +46,65 @@ function Popup() {
 
         // Check if desktop app is running
         checkDesktopApp()
+        generatePassword()
     }, [])
+
+    useEffect(() => {
+        generatePassword()
+    }, [length, options])
+
+    const showToast = (message: string) => {
+        setToast(message)
+        setTimeout(() => setToast(null), 2000)
+    }
+
+    const generatePassword = () => {
+        let chars = ''
+        if (options.uppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        if (options.lowercase) chars += 'abcdefghijklmnopqrstuvwxyz'
+        if (options.numbers) chars += '0123456789'
+        if (options.symbols) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?'
+
+        if (chars.length === 0) {
+            setPassword('')
+            return
+        }
+
+        let result = ''
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        setPassword(result)
+    }
+
+    const getPasswordStrength = () => {
+        let score = 0
+        if (password.length >= 8) score++
+        if (password.length >= 12) score++
+        if (password.length >= 16) score++
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++
+        if (/\d/.test(password)) score++
+        if (/[^a-zA-Z0-9]/.test(password)) score++
+        return Math.min(score, 5)
+    }
+
+    const getStrengthColor = () => {
+        const strength = getPasswordStrength()
+        if (strength <= 1) return '#ef4444'
+        if (strength <= 2) return '#f97316'
+        if (strength <= 3) return '#eab308'
+        if (strength <= 4) return '#22c55e'
+        return '#10b981'
+    }
+
+    const getStrengthLabel = () => {
+        const strength = getPasswordStrength()
+        if (strength <= 1) return 'Weak'
+        if (strength <= 2) return 'Fair'
+        if (strength <= 3) return 'Good'
+        if (strength <= 4) return 'Strong'
+        return 'Excellent'
+    }
 
     const checkDesktopApp = async () => {
         try {
@@ -83,8 +155,7 @@ function Popup() {
 
     const handleCopy = async (text: string, field: string) => {
         await navigator.clipboard.writeText(text)
-        // TODO: Show toast notification
-        console.log(`Copied ${field}`)
+        showToast(`${field} copied!`)
     }
 
     const openDesktopApp = () => {
@@ -103,7 +174,10 @@ function Popup() {
         return (
             <div className="popup">
                 <div className="popup-header">
-                    <h1>🔐 PassKeyPer</h1>
+                    <div className="header-brand">
+                        <span className="logo">🔐</span>
+                        <h1>PassKeyPer</h1>
+                    </div>
                 </div>
                 <div className="popup-loading">
                     <div className="spinner" />
@@ -117,7 +191,10 @@ function Popup() {
         return (
             <div className="popup">
                 <div className="popup-header">
-                    <h1>🔐 PassKeyPer</h1>
+                    <div className="header-brand">
+                        <span className="logo">🔐</span>
+                        <h1>PassKeyPer</h1>
+                    </div>
                 </div>
                 <div className="popup-locked">
                     <div className="lock-icon">🔒</div>
@@ -127,7 +204,7 @@ function Popup() {
                         Open Desktop App
                     </button>
                     <a
-                        href="https://github.com/yourusername/passkeyper"
+                        href="https://github.com/donapart/PassKeyPer"
                         target="_blank"
                         className="link"
                     >
@@ -140,9 +217,15 @@ function Popup() {
 
     return (
         <div className="popup">
+            {/* Toast */}
+            {toast && <div className="toast">{toast}</div>}
+
             {/* Header */}
             <div className="popup-header">
-                <h1>🔐 PassKeyPer</h1>
+                <div className="header-brand">
+                    <span className="logo">🔐</span>
+                    <h1>PassKeyPer</h1>
+                </div>
                 <div className="header-actions">
                     <button
                         className="icon-btn"
@@ -154,74 +237,189 @@ function Popup() {
                 </div>
             </div>
 
-            {/* Current Site */}
-            {currentUrl && (
-                <div className="current-site">
-                    <span className="site-icon">🌐</span>
-                    <span className="site-url">{new URL(currentUrl).hostname}</span>
-                </div>
-            )}
-
-            {/* Search */}
-            <div className="search-box">
-                <input
-                    type="text"
-                    placeholder="Search credentials..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="search-input"
-                />
+            {/* Tabs */}
+            <div className="tabs">
+                <button
+                    className={`tab ${activeTab === 'credentials' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('credentials')}
+                >
+                    🔑 Passwords
+                </button>
+                <button
+                    className={`tab ${activeTab === 'generator' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('generator')}
+                >
+                    🎲 Generator
+                </button>
             </div>
 
-            {/* Credentials List */}
-            <div className="credentials-list">
-                {filteredCredentials.length === 0 ? (
-                    <div className="empty-state">
-                        <p>No credentials found</p>
-                        <button onClick={openDesktopApp} className="btn-secondary">
-                            Add New in Desktop App
-                        </button>
-                    </div>
-                ) : (
-                    filteredCredentials.map((cred) => (
-                        <div key={cred.id} className="credential-item">
-                            <div className="credential-info">
-                                <div className="credential-name">{cred.name}</div>
-                                <div className="credential-username">{cred.username}</div>
+            {/* Content */}
+            <div className="popup-content">
+                {activeTab === 'credentials' && (
+                    <>
+                        {/* Current Site */}
+                        {currentUrl && (
+                            <div className="current-site">
+                                <span className="site-icon">🌐</span>
+                                <span className="site-url">{new URL(currentUrl).hostname}</span>
                             </div>
-                            <div className="credential-actions">
+                        )}
+
+                        {/* Search */}
+                        <div className="search-box">
+                            <input
+                                type="text"
+                                placeholder="Search credentials..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="search-input"
+                            />
+                        </div>
+
+                        {/* Credentials List */}
+                        <div className="credentials-list">
+                            {filteredCredentials.length === 0 ? (
+                                <div className="empty-state">
+                                    <p>No credentials found</p>
+                                    <button onClick={openDesktopApp} className="btn-secondary">
+                                        Add New in Desktop App
+                                    </button>
+                                </div>
+                            ) : (
+                                filteredCredentials.map((cred) => (
+                                    <div key={cred.id} className="credential-item">
+                                        <div className="credential-info">
+                                            <div className="credential-name">{cred.name}</div>
+                                            <div className="credential-username">{cred.username}</div>
+                                        </div>
+                                        <div className="credential-actions">
+                                            <button
+                                                className="icon-btn"
+                                                title="Copy username"
+                                                onClick={() => handleCopy(cred.username, 'Username')}
+                                            >
+                                                👤
+                                            </button>
+                                            <button
+                                                className="icon-btn"
+                                                title="Copy password"
+                                                onClick={() => handleCopy('[password]', 'Password')}
+                                            >
+                                                🔑
+                                            </button>
+                                            <button
+                                                className="btn-fill"
+                                                onClick={() => handleFill(cred)}
+                                            >
+                                                Fill
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'generator' && (
+                    <div className="generator-tab">
+                        {/* Generated Password */}
+                        <div className="password-display">
+                            <span className="password-text">{password || 'Generate a password'}</span>
+                            <div className="password-actions">
                                 <button
                                     className="icon-btn"
-                                    title="Copy username"
-                                    onClick={() => handleCopy(cred.username, 'username')}
+                                    onClick={() => handleCopy(password, 'Password')}
+                                    title="Copy"
                                 >
-                                    👤
+                                    📋
                                 </button>
                                 <button
                                     className="icon-btn"
-                                    title="Copy password"
-                                    onClick={() => handleCopy('[password]', 'password')}
+                                    onClick={generatePassword}
+                                    title="Regenerate"
                                 >
-                                    🔑
-                                </button>
-                                <button
-                                    className="btn-fill"
-                                    onClick={() => handleFill(cred)}
-                                >
-                                    Fill
+                                    🔄
                                 </button>
                             </div>
                         </div>
-                    ))
+
+                        {/* Strength */}
+                        <div className="strength-bar">
+                            <div className="strength-segments">
+                                {[0, 1, 2, 3, 4].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="strength-segment"
+                                        style={{
+                                            backgroundColor: i < getPasswordStrength() ? getStrengthColor() : '#334155'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            <span className="strength-label" style={{ color: getStrengthColor() }}>
+                                {getStrengthLabel()}
+                            </span>
+                        </div>
+
+                        {/* Length */}
+                        <div className="option-row">
+                            <span>Length: {length}</span>
+                            <input
+                                type="range"
+                                min="8"
+                                max="32"
+                                value={length}
+                                onChange={(e) => setLength(parseInt(e.target.value))}
+                                className="slider"
+                            />
+                        </div>
+
+                        {/* Options */}
+                        <div className="options-grid">
+                            <label className="option-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={options.uppercase}
+                                    onChange={(e) => setOptions({ ...options, uppercase: e.target.checked })}
+                                />
+                                <span>A-Z</span>
+                            </label>
+                            <label className="option-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={options.lowercase}
+                                    onChange={(e) => setOptions({ ...options, lowercase: e.target.checked })}
+                                />
+                                <span>a-z</span>
+                            </label>
+                            <label className="option-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={options.numbers}
+                                    onChange={(e) => setOptions({ ...options, numbers: e.target.checked })}
+                                />
+                                <span>0-9</span>
+                            </label>
+                            <label className="option-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={options.symbols}
+                                    onChange={(e) => setOptions({ ...options, symbols: e.target.checked })}
+                                />
+                                <span>!@#</span>
+                            </label>
+                        </div>
+                    </div>
                 )}
             </div>
 
             {/* Footer */}
             <div className="popup-footer">
-                <a href="#" className="footer-link">
-                    ⚙️ Settings
-                </a>
-                <a href="#" className="footer-link">
+                <span className="footer-status">
+                    <span className="status-dot connected" /> Connected
+                </span>
+                <a href="#" className="footer-link" onClick={(e) => { e.preventDefault(); openDesktopApp() }}>
                     🔒 Lock
                 </a>
             </div>

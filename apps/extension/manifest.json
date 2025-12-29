@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "PassKeyPer",
-    "version": "0.2.0",
-    "description": "Modern zero-knowledge password manager",
+    "name": "PassKeyPer - Zero-Knowledge Password Manager",
+    "version": "0.6.0",
+    "description": "Secure password manager with zero-knowledge encryption. Auto-fill credentials, generate strong passwords, and sync across devices.",
     "author": "PassKeyPer Team",
     "permissions": [
         "storage",
