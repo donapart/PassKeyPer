@@ -204,7 +204,9 @@ A COMPLETE PASSWORD MANAGER ECOSYSTEM:
 
 1. **Native Messaging** (~1h)
    - [x] Protocol handler (Mocked)
-   - [ ] Real Vault connection (Pending)
+   - [x] Real Vault connection (IPC)
+   - Complete Phase 2 (100%)
+   - Tag v0.4.0
 
 2. **Desktop Sync UI** (~2h)
    - [x] Settings Integration (Done)
@@ -213,7 +215,12 @@ A COMPLETE PASSWORD MANAGER ECOSYSTEM:
    - [x] Conflict UI Wiring (Done)
 
 3. **API Routes Complete** (~2h)
+   - [x] CRUD Implementation (Done)
+   - [x] Schema Alignment (Done)
+   - [x] Sync Endpoints (Done)
 4. **E2E Testing** (~2h)
+   - [x] API Integration Tests (Done)
+   - [x] Zero-Knowledge Flow Verification (Done)
    - Complete Phase 3 (100%)
    - Tag v0.5.0
 
