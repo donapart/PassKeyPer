@@ -17,6 +17,7 @@ import vaultsRouter from './routes/vaults'
 import itemsRouter from './routes/items'
 import syncRouter from './routes/sync'
 import sharingRouter from './routes/sharing'
+import devicesRouter from './routes/devices'
 
 // Import WebSocket handler
 import { handleWebSocket } from './websocket'
@@ -44,7 +45,7 @@ app.use('/api/', limiter)
 
 // Routes
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() })
+    res.json({ status: 'ok', timestamp: new Date().toISONString() })
 })
 
 app.use('/api/auth', authRouter)
@@ -52,6 +53,7 @@ app.use('/api/vaults', vaultsRouter)
 app.use('/api/items', itemsRouter)
 app.use('/api/sync', syncRouter)
 app.use('/api/sharing', sharingRouter)
+app.use('/api/devices', devicesRouter)
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
