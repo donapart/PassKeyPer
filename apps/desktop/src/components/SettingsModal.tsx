@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Lock, Clock, Keyboard, Bell, Shield, Database } from 'lucide-react'
+import { X, Lock, Clock, Keyboard, Bell, Shield, Database, Cloud } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 import { toast } from './Toast'
 
@@ -9,15 +9,25 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-    const [autoLockMinutes, setAutoLockMinutes] = useState(15)
-    const [clipboardTimeout, setClipboardTimeout] = useState(30)
-    const [showNotifications, setShowNotifications] = useState(true)
+    const [autoLockMinutes, setAutoLockMinutes] = useState(parseInt(localStorage.getItem('autoLockMinutes') || '15'))
+    const [clipboardTimeout, setClipboardTimeout] = useState(parseInt(localStorage.getItem('clipboardTimeout') || '30'))
+    const [showNotifications, setShowNotifications] = useState(localStorage.getItem('showNotifications') !== 'false')
+
+    // Sync Settings
+    const [syncApiUrl, setSyncApiUrl] = useState(localStorage.getItem('syncApiUrl') || 'http://localhost:3000')
+    const [autoSync, setAutoSync] = useState(localStorage.getItem('autoSync') !== 'false')
+    const [syncInterval, setSyncInterval] = useState(parseInt(localStorage.getItem('syncInterval') || '60000'))
 
     const handleSave = () => {
         // Save settings to localStorage
         localStorage.setItem('autoLockMinutes', autoLockMinutes.toString())
         localStorage.setItem('clipboardTimeout', clipboardTimeout.toString())
         localStorage.setItem('showNotifications', showNotifications.toString())
+
+        // Save Sync Settings
+        localStorage.setItem('syncApiUrl', syncApiUrl)
+        localStorage.setItem('autoSync', autoSync.toString())
+        localStorage.setItem('syncInterval', syncInterval.toString())
 
         toast.success('Settings saved successfully')
         onClose()
@@ -181,6 +191,65 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     Ctrl+,
                                 </kbd>
                             </div>
+                        </div>
+                    </section>
+
+
+                    {/* Cloud Sync */}
+                    <section>
+                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <Cloud className="w-5 h-5 text-primary-400" />
+                            Cloud Sync
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Server URL
+                                </label>
+                                <input
+                                    type="text"
+                                    value={syncApiUrl}
+                                    onChange={(e) => setSyncApiUrl(e.target.value)}
+                                    className="input w-full"
+                                    placeholder="https://api.passkeyper.com"
+                                />
+                                <p className="text-xs text-dark-400 mt-1">
+                                    URL of the synchronization server (REST + WebSocket)
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={autoSync}
+                                        onChange={(e) => setAutoSync(e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    <span className="text-sm font-medium text-gray-300">
+                                        Enable Auto-Sync
+                                    </span>
+                                </label>
+                            </div>
+
+                            {autoSync && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Sync Interval
+                                    </label>
+                                    <select
+                                        value={syncInterval}
+                                        onChange={(e) => setSyncInterval(parseInt(e.target.value))}
+                                        className="input w-full"
+                                    >
+                                        <option value={15000}>Every 15 seconds</option>
+                                        <option value={30000}>Every 30 seconds</option>
+                                        <option value={60000}>Every minute</option>
+                                        <option value={300000}>Every 5 minutes</option>
+                                        <option value={900000}>Every 15 minutes</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </section>
 

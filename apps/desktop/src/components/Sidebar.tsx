@@ -177,4 +177,3 @@ export function Sidebar() {
         </div>
     )
 }
-```

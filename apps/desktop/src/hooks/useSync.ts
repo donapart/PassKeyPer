@@ -89,10 +89,18 @@ export function useSync(options: UseSyncOptions = {}) {
         }
 
         const handleConflict = (conflict: any) => {
-            toast({
-                type: 'warning',
-                message: 'Conflict detected - review required'
-            })
+            const { conflicts, setConflicts } = useAppStore.getState()
+
+            // Add to existing conflicts if not present
+            const exists = conflicts.some(c => c.itemId === conflict.itemId)
+            if (!exists) {
+                setConflicts([...conflicts, conflict])
+
+                toast({
+                    type: 'warning',
+                    message: 'Conflict detected - review required'
+                })
+            }
         }
 
         const handleAuthenticated = () => {

@@ -53,6 +53,11 @@ interface AppState {
     // Modals
     showImportModal: boolean
     showExportModal: boolean
+    showConflictModal: boolean
+
+    // Sync Conflicts
+    conflicts: any[]
+    setConflicts: (conflicts: any[]) => void
 
     // Search
     searchQuery: string
@@ -85,8 +90,14 @@ export const useAppStore = create<AppState>((set) => ({
     toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
     // Modals
+    // Modals
     showImportModal: false,
     showExportModal: false,
+    showConflictModal: false,
+
+    // Sync Conflicts
+    conflicts: [],
+    setConflicts: (conflicts) => set({ conflicts, showConflictModal: conflicts.length > 0 }),
 
     // Search
     searchQuery: '',
