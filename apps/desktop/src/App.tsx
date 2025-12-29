@@ -12,6 +12,7 @@ import { ToastContainer } from './components/Toast'
 import { useAppStore } from './store/app-store'
 import { useAutoLock } from './hooks/useAutoLock'
 import { useKeyboardShortcuts, shortcuts } from './hooks/useKeyboardShortcuts'
+import { useSync } from './hooks/useSync'
 
 function App() {
     const {
@@ -23,21 +24,42 @@ function App() {
         items,
         setItems,
         showImportModal,
-        showImportModal,
         showExportModal,
         showConflictModal,
         conflicts,
         setConflicts,
+        syncSettings,
+        currentVault
     } = useAppStore()
     const [showSettings, setShowSettings] = useState(false)
 
-    const handleResolveConflict = async (itemId: string, resolution: 'local' | 'server' | 'merge') => {
-        // TODO: Implement actual resolution via sync service
-        console.log('Resolving conflict:', itemId, resolution)
+    // Initialize Sync Hook
+    const {
+        sync,
+        isConnected,
+        isSyncing,
+        lastSync,
+        errors,
+        itemsUpdated,
+        itemsConflicted,
+        resolveConflict
+    } = useSync({
+        vaultId: currentVault?.id,
+        apiUrl: syncSettings.apiUrl,
+        autoSync: syncSettings.autoSync,
+        syncInterval: syncSettings.syncInterval
+    })
 
-        // Remove from list
-        const newConflicts = conflicts.filter(c => c.itemId !== itemId)
-        setConflicts(newConflicts)
+    const handleResolveConflict = async (itemId: string, resolution: 'local' | 'server' | 'merge') => {
+        try {
+            await resolveConflict(itemId, resolution)
+
+            // Remove from local conflict list on success
+            const newConflicts = conflicts.filter(c => c.itemId !== itemId)
+            setConflicts(newConflicts)
+        } catch (error) {
+            console.error('Failed to resolve conflict:', error)
+        }
     }
 
     const showLogin = !isAuthenticated || isLocked
@@ -126,11 +148,22 @@ function App() {
                         <Sidebar />
                         <VaultView />
                     </div>
-                    <SyncStatusBar />
+                        <VaultView />
+                    </div>
+                    <SyncStatusBar 
+                        sync={sync}
+                        isConnected={isConnected}
+                        isSyncing={isSyncing}
+                        lastSync={lastSync}
+                        errors={errors}
+                        itemsUpdated={itemsUpdated}
+                        itemsConflicted={itemsConflicted}
+                    />
                 </div>
-            )}
+    )
+}
 
-            {/* Modals */}
+{/* Modals */ }
             <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
             <ImportModal
@@ -153,9 +186,9 @@ function App() {
                 onResolve={handleResolveConflict}
             />
 
-            {/* Toast notifications */}
-            <ToastContainer />
-        </div>
+{/* Toast notifications */ }
+<ToastContainer />
+        </div >
     )
 }
 

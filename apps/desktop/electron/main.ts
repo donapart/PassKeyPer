@@ -5,6 +5,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
 import { VaultStorage } from '@passkeyper/storage'
+import { IpcServer } from './ipc-server'
+import { setupNativeMessaging } from './native-messaging'
 import {
     deriveMasterKey,
     deriveKeys,
@@ -13,10 +15,68 @@ import {
     calculateStrength,
 } from '@passkeyper/core'
 
+const isNativeMessagingCode = process.argv.find(arg => arg.startsWith('chrome-extension://'))
+
+if (isNativeMessagingCode) {
+    // If run as native messaging host
+    setupNativeMessaging()
+} else {
+    // Main Desktop App Logic
+
+    // Single Instance Lock
+    const gotTheLock = app.requestSingleInstanceLock()
+
+    if (!gotTheLock) {
+        app.quit()
+    } else {
+        runApp()
+    }
+}
+
 let mainWindow: BrowserWindow | null = null
 let vaultStorage: VaultStorage | null = null
+let ipcServer: IpcServer | null = null
 
 const isDev = process.env.NODE_ENV === 'development'
+
+function runApp() {
+    app.whenReady().then(() => {
+        // Initialize vault storage
+        const userDataPath = app.getPath('userData')
+        const dbPath = path.join(userDataPath, 'vault.db')
+
+        vaultStorage = new VaultStorage({ dbPath })
+
+        // Start IPC Server for Native Messaging
+        ipcServer = new IpcServer(vaultStorage)
+        ipcServer.start()
+
+        createWindow()
+
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow()
+            }
+        })
+    })
+
+    app.on('second-instance', (event, commandLine, workingDirectory) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore()
+            mainWindow.focus()
+        }
+    })
+
+    app.on('window-all-closed', () => {
+        if (process.platform !== 'darwin') {
+            if (vaultStorage) {
+                vaultStorage.close()
+            }
+            app.quit()
+        }
+    })
+}
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -45,31 +105,6 @@ function createWindow() {
         mainWindow = null
     })
 }
-
-app.whenReady().then(() => {
-    // Initialize vault storage
-    const userDataPath = app.getPath('userData')
-    const dbPath = path.join(userDataPath, 'vault.db')
-
-    vaultStorage = new VaultStorage({ dbPath })
-
-    createWindow()
-
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow()
-        }
-    })
-})
-
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        if (vaultStorage) {
-            vaultStorage.close()
-        }
-        app.quit()
-    }
-})
 
 // ============================================================================
 // IPC Handlers
@@ -125,6 +160,11 @@ ipcMain.handle('login', async (_, email: string, masterPassword: string, saltBas
         // Set vault key for storage operations
         if (vaultStorage) {
             vaultStorage.setVaultKey(encryptionKey)
+        }
+
+        // Update IPC server with unlocked storage
+        if (ipcServer) {
+            ipcServer.setVaultStorage(vaultStorage)
         }
 
         return {
@@ -216,6 +256,10 @@ ipcMain.handle('toggle-favorite', async (_, itemId: string) => {
 ipcMain.handle('lock-vault', async () => {
     if (vaultStorage) {
         vaultStorage.setVaultKey(new Uint8Array(32)) // Clear key
+    }
+    // Update IPC server to prevent access
+    if (ipcServer) {
+        ipcServer.setVaultStorage(vaultStorage) // Re-set, possibly locking it effectively if we had a separate "unlocked" flag, but here we rely on the internal state of vaultStorage
     }
     return { success: true }
 })

@@ -170,7 +170,12 @@ export function useSync(options: UseSyncOptions = {}) {
         isSyncing: status.isSyncing,
         errors: status.errors,
         itemsUpdated: status.itemsUpdated,
-        itemsConflicted: status.itemsConflicted
+        itemsConflicted: status.itemsConflicted,
+        resolveConflict: async (itemId: string, resolution: 'local' | 'server' | 'merge') => {
+            if (syncService) {
+                await syncService.resolveConflict(itemId, resolution)
+            }
+        }
     }
 }
 

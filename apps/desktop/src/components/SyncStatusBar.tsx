@@ -7,21 +7,26 @@ import { Cloud, CloudOff, RefreshCw, AlertCircle, Check } from 'lucide-react'
 import { useSync } from '../hooks/useSync'
 import { useAppStore } from '../store/app-store'
 
-export function SyncStatusBar() {
+export interface SyncStatusBarProps {
+    sync: () => Promise<void>
+    isConnected: boolean
+    isSyncing: boolean
+    lastSync: Date | null
+    errors: any[]
+    itemsUpdated: number
+    itemsConflicted: number
+}
+
+export function SyncStatusBar({
+    sync,
+    isConnected,
+    isSyncing,
+    lastSync,
+    errors,
+    itemsUpdated,
+    itemsConflicted
+}: SyncStatusBarProps) {
     const { currentVault } = useAppStore()
-    const {
-        sync,
-        isConnected,
-        isSyncing,
-        lastSync,
-        errors,
-        itemsUpdated,
-        itemsConflicted
-    } = useSync({
-        vaultId: currentVault?.id,
-        autoSync: true,
-        syncInterval: 60000 // 1 minute
-    })
 
     const formatLastSync = (date: Date | null) => {
         if (!date) return 'Never'

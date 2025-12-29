@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // User accounts
@@ -99,7 +99,7 @@ model VaultItem {
   vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   
   // Encrypted data (entire item encrypted as blob)
-  encryptedData String @db.Text
+  encryptedData String
   
   // Metadata (for sync)
   version Int @default(1)

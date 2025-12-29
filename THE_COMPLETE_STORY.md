@@ -203,13 +203,15 @@ A COMPLETE PASSWORD MANAGER ECOSYSTEM:
 ### This Week
 
 1. **Native Messaging** (~1h)
-   - Complete Phase 2 (100%)
-   - Tag v0.4.0
-
-### Next 2 Weeks
+   - [x] Protocol handler (Mocked)
+   - [ ] Real Vault connection (Pending)
 
 2. **Desktop Sync UI** (~2h)
-2. **Conflict Resolution** (~2h)
+   - [x] Settings Integration (Done)
+   - [x] Sync Hook Wiring (Done)
+   - [x] Status Bar (Done)
+   - [x] Conflict UI Wiring (Done)
+
 3. **API Routes Complete** (~2h)
 4. **E2E Testing** (~2h)
    - Complete Phase 3 (100%)
@@ -217,12 +219,12 @@ A COMPLETE PASSWORD MANAGER ECOSYSTEM:
 
 ### Month 2-3
 
-6. **Mobile Apps** (Phase 4)
+1. **Mobile Apps** (Phase 4)
 2. **Team Features** (Phase 5)
 
 ### Month 6
 
-8. **v1.0 Launch!** 🎉
+1. **v1.0 Launch!** 🎉
 
 **Total to v1.0**: ~60-70 more hours
 

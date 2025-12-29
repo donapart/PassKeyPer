@@ -9,14 +9,16 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+    const { syncSettings, setSyncSettings } = useAppStore()
+
     const [autoLockMinutes, setAutoLockMinutes] = useState(parseInt(localStorage.getItem('autoLockMinutes') || '15'))
     const [clipboardTimeout, setClipboardTimeout] = useState(parseInt(localStorage.getItem('clipboardTimeout') || '30'))
     const [showNotifications, setShowNotifications] = useState(localStorage.getItem('showNotifications') !== 'false')
 
-    // Sync Settings
-    const [syncApiUrl, setSyncApiUrl] = useState(localStorage.getItem('syncApiUrl') || 'http://localhost:3000')
-    const [autoSync, setAutoSync] = useState(localStorage.getItem('autoSync') !== 'false')
-    const [syncInterval, setSyncInterval] = useState(parseInt(localStorage.getItem('syncInterval') || '60000'))
+    // Sync Settings (local state for form, init from store)
+    const [syncApiUrl, setSyncApiUrl] = useState(syncSettings.apiUrl)
+    const [autoSync, setAutoSync] = useState(syncSettings.autoSync)
+    const [syncInterval, setSyncInterval] = useState(syncSettings.syncInterval)
 
     const handleSave = () => {
         // Save settings to localStorage
@@ -24,10 +26,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         localStorage.setItem('clipboardTimeout', clipboardTimeout.toString())
         localStorage.setItem('showNotifications', showNotifications.toString())
 
-        // Save Sync Settings
-        localStorage.setItem('syncApiUrl', syncApiUrl)
-        localStorage.setItem('autoSync', autoSync.toString())
-        localStorage.setItem('syncInterval', syncInterval.toString())
+        // Save Sync Settings to Store (handles localStorage internally)
+        setSyncSettings({
+            apiUrl: syncApiUrl,
+            autoSync,
+            syncInterval
+        })
 
         toast.success('Settings saved successfully')
         onClose()

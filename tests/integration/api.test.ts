@@ -165,6 +165,25 @@ describe('API Integration Tests', () => {
             expect(data.version).toBe(2)
         })
 
+        test('PUT /api/items/:id - should detect conflict on outdated version', async () => {
+            const response = await fetch(`${API_URL}/api/items/${itemId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                    encryptedData: 'conflict-data',
+                    version: 1 // Old version, current is 2
+                })
+            })
+
+            expect(response.status).toBe(409)
+            const data = await response.json()
+            expect(data.error).toContain('Conflict')
+            expect(data.currentVersion).toBe(2)
+        })
+
         test('DELETE /api/items/:id - should delete item', async () => {
             const response = await fetch(`${API_URL}/api/items/${itemId}`, {
                 method: 'DELETE',

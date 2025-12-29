@@ -59,6 +59,14 @@ interface AppState {
     conflicts: any[]
     setConflicts: (conflicts: any[]) => void
 
+    // Sync Settings
+    syncSettings: {
+        apiUrl: string
+        autoSync: boolean
+        syncInterval: number
+    }
+    setSyncSettings: (settings: Partial<{ apiUrl: string, autoSync: boolean, syncInterval: number }>) => void
+
     // Search
     searchQuery: string
     setSearchQuery: (query: string) => void
@@ -98,6 +106,21 @@ export const useAppStore = create<AppState>((set) => ({
     // Sync Conflicts
     conflicts: [],
     setConflicts: (conflicts) => set({ conflicts, showConflictModal: conflicts.length > 0 }),
+
+    // Sync Settings
+    syncSettings: {
+        apiUrl: localStorage.getItem('syncApiUrl') || 'http://localhost:3000',
+        autoSync: localStorage.getItem('autoSync') !== 'false',
+        syncInterval: parseInt(localStorage.getItem('syncInterval') || '60000')
+    },
+    setSyncSettings: (newSettings) => set((state) => {
+        const settings = { ...state.syncSettings, ...newSettings }
+        // Persist to localStorage
+        if (newSettings.apiUrl !== undefined) localStorage.setItem('syncApiUrl', settings.apiUrl)
+        if (newSettings.autoSync !== undefined) localStorage.setItem('autoSync', settings.autoSync.toString())
+        if (newSettings.syncInterval !== undefined) localStorage.setItem('syncInterval', settings.syncInterval.toString())
+        return { syncSettings: settings }
+    }),
 
     // Search
     searchQuery: '',
