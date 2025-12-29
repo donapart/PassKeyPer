@@ -1,0 +1,240 @@
+# PassKeyPer CI/CD Pipeline
+# Runs tests, builds Docker images, and deploys to production
+
+name: CI/CD Pipeline
+
+on:
+    push:
+        branches: [main, develop]
+        tags: ["v*"]
+    pull_request:
+        branches: [main]
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    # ============================================
+    # LINT & TYPE CHECK
+    # ============================================
+    lint:
+        name: Lint & Type Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run ESLint
+              run: npm run lint --if-present
+
+            - name: Run Type Check
+              run: npm run type-check --if-present
+
+    # ============================================
+    # UNIT TESTS
+    # ============================================
+    test:
+        name: Unit Tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run Tests
+              run: npm test --if-present
+
+            - name: Upload Coverage
+              uses: codecov/codecov-action@v3
+              if: always()
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  fail_ci_if_error: false
+
+    # ============================================
+    # INTEGRATION TESTS
+    # ============================================
+    integration:
+        name: Integration Tests
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_USER: test
+                    POSTGRES_PASSWORD: test
+                    POSTGRES_DB: passkeyper_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Setup Database
+              run: |
+                  cd services/api
+                  npx prisma migrate deploy
+              env:
+                  DATABASE_URL: postgresql://test:test@localhost:5432/passkeyper_test
+
+            - name: Run API Integration Tests
+              run: |
+                  cd services/api
+                  npm run dev &
+                  sleep 5
+                  npm run test:integration
+              env:
+                  DATABASE_URL: postgresql://test:test@localhost:5432/passkeyper_test
+                  JWT_SECRET: test-secret-key
+
+    # ============================================
+    # BUILD DOCKER IMAGE
+    # ============================================
+    build:
+        name: Build Docker Image
+        runs-on: ubuntu-latest
+        needs: [lint, test]
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Login to Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+                      type=sha
+
+            - name: Build and Push
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: services/api/Dockerfile
+                  push: ${{ github.event_name != 'pull_request' }}
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    # ============================================
+    # DEPLOY TO STAGING
+    # ============================================
+    deploy-staging:
+        name: Deploy to Staging
+        runs-on: ubuntu-latest
+        needs: [build, integration]
+        if: github.ref == 'refs/heads/develop'
+        environment: staging
+
+        steps:
+            - name: Deploy to Staging
+              run: |
+                  echo "🚀 Deploying to staging..."
+                  # Add your deployment commands here
+                  # Example: SSH to server and pull new image
+                  # ssh user@staging.passkeyper.app "docker-compose pull && docker-compose up -d"
+
+    # ============================================
+    # DEPLOY TO PRODUCTION
+    # ============================================
+    deploy-production:
+        name: Deploy to Production
+        runs-on: ubuntu-latest
+        needs: [build, integration]
+        if: startsWith(github.ref, 'refs/tags/v')
+        environment: production
+
+        steps:
+            - name: Deploy to Production
+              run: |
+                  echo "🚀 Deploying to production..."
+                  # Add your deployment commands here
+                  # Example: 
+                  # - Update Kubernetes deployment
+                  # - SSH to production server
+                  # - Trigger cloud provider deployment
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # ============================================
+    # SECURITY SCAN
+    # ============================================
+    security:
+        name: Security Scan
+        runs-on: ubuntu-latest
+        needs: build
+        if: github.event_name != 'pull_request'
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Run Trivy vulnerability scanner
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  format: "sarif"
+                  output: "trivy-results.sarif"
+
+            - name: Upload Trivy scan results
+              uses: github/codeql-action/upload-sarif@v2
+              if: always()
+              with:
+                  sarif_file: "trivy-results.sarif"
