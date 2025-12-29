@@ -153,7 +153,7 @@ passkeyper/
 
 ### Reporting Vulnerabilities
 
-Please report security vulnerabilities to <security@passkeyper.com> (GPG key available).
+Please report security vulnerabilities to <security@example.com> (GPG key available).
 
 ## 📖 License
 

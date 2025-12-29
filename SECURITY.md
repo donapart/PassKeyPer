@@ -4,7 +4,7 @@
 
 **Please DO NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: **<security@passkeyper.com>**
+Instead, please report them via email to: **<security@example.com>**
 
 ### What to Include in Your Report
 
@@ -256,8 +256,8 @@ SQLite Database
 
 ## 📞 Contact
 
-- **Security Issues**: <security@passkeyper.com>
-- **General Questions**: <hello@passkeyper.com>
+- **Security Issues**: <security@example.com>
+- **General Questions**: <hello@example.com>
 - **GitHub**: <https://github.com/yourusername/passkeyper>
 
 ## 🙏 Credits

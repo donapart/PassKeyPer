@@ -259,7 +259,7 @@ describe('deriveEncryptionKey', () => {
 
 **DO NOT** open public issues for security vulnerabilities!
 
-Instead, email <security@passkeyper.com> with:
+Instead, email <security@example.com> with:
 
 - Description of the vulnerability
 - Steps to reproduce
@@ -403,7 +403,7 @@ Contributors will be:
 
 - **Questions**: Open a GitHub Discussion
 - **Chat**: Join our Discord (coming soon)
-- **Email**: <hello@passkeyper.com>
+- **Email**: <hello@example.com>
 
 ## 📜 License
 

@@ -211,7 +211,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     value={syncApiUrl}
                                     onChange={(e) => setSyncApiUrl(e.target.value)}
                                     className="input w-full"
-                                    placeholder="https://api.passkeyper.com"
+                                    placeholder="http://localhost:3000"
                                 />
                                 <p className="text-xs text-dark-400 mt-1">
                                     URL of the synchronization server (REST + WebSocket)
