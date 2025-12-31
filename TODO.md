@@ -1,50 +1,64 @@
 # 📋 PassKeyPer - TODO & Roadmap
 
-**Last Updated**: 2025-12-27 23:55  
-**Current Version**: 0.3.0  
-**Overall Progress**: 20.9% (1.67/8 phases)
+**Last Updated**: 2025-12-31  
+**Current Version**: 1.0.0  
+**Overall Progress**: 70% (6/8 phases complete)
+
+---
+
+## ✅ COMPLETED
+
+### Phase 1-6: Core Features Complete ✅
+
+- [x] Zero-knowledge encryption (AES-256-GCM)
+- [x] Desktop app (Electron + React)
+- [x] Password generator
+- [x] TOTP Authenticator
+- [x] Browser extension (Chrome/Firefox)
+- [x] Import/Export (6 formats)
+- [x] Cloud sync backend (REST API + WebSocket)
+- [x] Mobile app (React Native + Expo)
+- [x] Team features & sharing
+- [x] CI/CD Pipeline (GitHub Actions)
+- [x] Windows installer (.exe)
+- [x] GitHub Pages documentation
 
 ---
 
 ## 🔥 IMMEDIATE PRIORITIES (Next Session)
 
-### Phase 2 Completion (47.5% remaining)
+### Phase 7: CLI & Passkeys (30% remaining)
 
-**1. Browser Extension Integration** (2-3 hours)
+**1. CLI Tool** (4-6 hours)
 
-- [ ] Complete native messaging setup
-  - [ ] Registry installation scripts (Windows)
-  - [ ] Manifest installation (macOS/Linux)
-  - [ ] Test desktop ↔ browser connection
-- [ ] Desktop IPC integration
-  - [ ] Handle extension messages in main process
-  - [ ] Vault data access from extension
-  - [ ] Real credential loading
-- [ ] Form auto-save
-  - [ ] Detect form submission
-  - [ ] Prompt user to save
-  - [ ] Update existing credentials
-- [ ] Testing
-  - [ ] Test on real websites (GitHub, Gmail, etc.)
-  - [ ] Cross-browser testing (Firefox)
-  - [ ] Multi-account scenarios
+- [ ] Create @passkeyper/cli package
+  - [ ] oclif framework setup
+  - [ ] Authentication commands (login, logout)
+  - [ ] Vault operations (list, get, create, update, delete)
+  - [ ] Password generation
+  - [ ] TOTP code generation
+  - [ ] Import/Export
+- [ ] Scripting support
+  - [ ] JSON output mode
+  - [ ] Non-interactive mode
+  - [ ] Environment variables
 
-**2. TOTP Desktop Integration** (1 hour)
+**2. Passkey (WebAuthn) Support** (4-6 hours)
 
-- [ ] Add TOTP field to ItemModal
-- [ ] Display TOTP in ItemDetailModal
-- [ ] QR code scanner (jsQR library)
-- [ ] Import TOTP from URI
-- [ ] Export TOTP codes
+- [ ] FIDO2/WebAuthn integration
+  - [ ] Security key registration
+  - [ ] Login with passkey
+  - [ ] Platform authenticator (Windows Hello)
+- [ ] Passkey storage
+  - [ ] Store passkeys for websites
+  - [ ] Sync passkeys across devices
+  - [ ] Autofill integration
 
-**3. Import/Export UI** (1 hour)
+**3. Code Quality** (2-3 hours)
 
-- [ ] Add menu items to sidebar
-- [ ] Create ImportModal component
-- [ ] Create ExportModal component
-- [ ] File picker integration
-- [ ] Progress indicator
-- [ ] Success/error handling
+- [ ] Add ESLint configs to all packages
+- [ ] Add unit tests for core packages
+- [ ] Set up test coverage reporting
 
 ---
 
