@@ -45,6 +45,10 @@ jobs:
                       ### Mobile
                       - **Android**: PassKeyPer-Android.apk
 
+                      ### Browser Extensions
+                      - **Chrome/Edge**: PassKeyPer-Chrome.zip (load unpacked or submit to Chrome Web Store)
+                      - **Firefox**: PassKeyPer-Firefox.zip (load as temporary add-on or submit to AMO)
+
     build-desktop:
         name: Build Desktop (${{ matrix.os }})
         needs: create-release
@@ -169,3 +173,82 @@ jobs:
                   asset_path: ${{ steps.find_apk.outputs.apk_path }}
                   asset_name: PassKeyPer-Android.apk
                   asset_content_type: application/vnd.android.package-archive
+
+    build-extension:
+        name: Build Browser Extension
+        needs: create-release
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build packages
+              run: npm run build
+
+            - name: Build extension
+              run: |
+                  cd apps/extension
+                  npm run build
+
+            - name: Package Chrome Extension
+              run: |
+                  cd apps/extension/dist
+                  zip -r ../PassKeyPer-Chrome.zip .
+
+            - name: Upload Chrome Extension
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ needs.create-release.outputs.upload_url }}
+                  asset_path: apps/extension/PassKeyPer-Chrome.zip
+                  asset_name: PassKeyPer-Chrome.zip
+                  asset_content_type: application/zip
+
+            - name: Create Firefox manifest
+              run: |
+                  cd apps/extension/dist
+                  # Convert manifest v3 to v2 for Firefox compatibility
+                  node -e "
+                  const fs = require('fs');
+                  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+                  manifest.manifest_version = 2;
+                  manifest.browser_specific_settings = {
+                    gecko: {
+                      id: 'passkeyper@passkeyper.com',
+                      strict_min_version: '109.0'
+                    }
+                  };
+                  if (manifest.background?.service_worker) {
+                    manifest.background = { scripts: ['background.js'] };
+                  }
+                  if (manifest.action) {
+                    manifest.browser_action = manifest.action;
+                    delete manifest.action;
+                  }
+                  fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
+                  "
+
+            - name: Package Firefox Extension
+              run: |
+                  cd apps/extension/dist
+                  zip -r ../PassKeyPer-Firefox.zip .
+
+            - name: Upload Firefox Extension
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ needs.create-release.outputs.upload_url }}
+                  asset_path: apps/extension/PassKeyPer-Firefox.zip
+                  asset_name: PassKeyPer-Firefox.zip
+                  asset_content_type: application/zip

@@ -41,14 +41,26 @@ A zero-knowledge password manager with TOTP, browser extension, and cloud sync.
 
 ### Download
 
+#### Desktop Apps
 | Platform | Download |
 |----------|----------|
 | Windows | [PassKeyPer-Setup-Windows-x64.exe](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Setup-Windows-x64.exe) |
 | macOS | [PassKeyPer-macOS-x64.dmg](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-macOS-x64.dmg) |
 | Linux | [PassKeyPer-Linux-x86_64.AppImage](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Linux-x86_64.AppImage) |
-| Android | [PassKeyPer-Android.apk](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Android.apk) |
 
-> 💡 **No releases yet?** Build from source below or wait for the next tagged release.
+#### Mobile Apps
+| Platform | Download |
+|----------|----------|
+| Android | [PassKeyPer-Android.apk](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Android.apk) |
+| iOS | 🔜 Coming Soon |
+
+#### Browser Extensions
+| Browser | Download |
+|---------|----------|
+| Chrome / Edge | [PassKeyPer-Chrome.zip](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Chrome.zip) |
+| Firefox | [PassKeyPer-Firefox.zip](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Firefox.zip) |
+
+> 💡 **Installing Extensions**: Unzip and load as "unpacked extension" in developer mode, or wait for official store listings.
 
 ### Build from Source
 
