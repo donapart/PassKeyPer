@@ -18,6 +18,7 @@ const createVaultSchema = z.object({
     name: z.string(),
     type: z.enum(['personal', 'work', 'shared']),
     encryptedKey: z.string(),
+    teamId: z.string().optional(),
 })
 
 /**
@@ -26,11 +27,22 @@ const createVaultSchema = z.object({
  */
 router.get('/', async (req, res) => {
     try {
+        const userId = req.userId!
+
         const vaults = await prisma.vault.findMany({
-            where: { userId: req.userId! },
+            where: {
+                OR: [
+                    { userId }, // Owned
+                    { team: { members: { some: { userId } } } }, // Team vaults
+                    { shares: { some: { userId } } } // Shared vaults
+                ]
+            },
             include: {
                 _count: {
                     select: { items: true }
+                },
+                team: {
+                    select: { id: true, name: true }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -38,6 +50,7 @@ router.get('/', async (req, res) => {
 
         res.json({ vaults })
     } catch (error) {
+        console.error('Fetch vaults error:', error)
         res.status(500).json({ error: 'Failed to fetch vaults' })
     }
 })
@@ -48,14 +61,37 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
     try {
+        const userId = req.userId!
         const data = createVaultSchema.parse(req.body)
+
+        // If teamId provided, verify membership
+        if (data.teamId) {
+            const membership = await prisma.teamMember.findFirst({
+                where: { teamId: data.teamId, userId }
+            })
+            if (!membership) {
+                return res.status(403).json({ error: 'Not a member of this team' })
+            }
+        }
 
         const vault = await prisma.vault.create({
             data: {
-                userId: req.userId!,
+                userId,
                 name: data.name,
                 type: data.type,
                 encryptedKey: data.encryptedKey,
+                teamId: data.teamId,
+            }
+        })
+
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId,
+                action: 'VAULT_CREATED',
+                resourceType: 'VAULT',
+                resourceId: vault.id,
+                details: JSON.stringify({ name: vault.name, type: vault.type, teamId: data.teamId })
             }
         })
 
@@ -71,13 +107,19 @@ router.post('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
     try {
+        const userId = req.userId!
         const vault = await prisma.vault.findFirst({
             where: {
                 id: req.params.id,
-                userId: req.userId!
+                OR: [
+                    { userId },
+                    { team: { members: { some: { userId } } } },
+                    { shares: { some: { userId } } }
+                ]
             },
             include: {
                 items: {
+                    where: { deletedAt: null },
                     select: {
                         id: true,
                         encryptedData: true,
@@ -123,6 +165,17 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Vault not found' })
         }
 
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId: req.userId!,
+                action: 'VAULT_UPDATED',
+                resourceType: 'VAULT',
+                resourceId: req.params.id,
+                details: JSON.stringify({ name, type })
+            }
+        })
+
         res.json({ success: true })
     } catch (error) {
         res.status(500).json({ error: 'Failed to update vault' })
@@ -139,6 +192,16 @@ router.delete('/:id', async (req, res) => {
             where: {
                 id: req.params.id,
                 userId: req.userId!
+            }
+        })
+
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId: req.userId!,
+                action: 'VAULT_DELETED',
+                resourceType: 'VAULT',
+                resourceId: req.params.id
             }
         })
 

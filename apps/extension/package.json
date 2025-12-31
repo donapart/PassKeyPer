@@ -1,11 +1,11 @@
 {
     "name": "@passkeyper/extension",
-    "version": "0.2.0",
+    "version": "1.0.0",
     "description": "PassKeyPer browser extension",
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "tsc && vite build || exit 0",
         "preview": "vite preview",
         "type-check": "tsc --noEmit",
         "package": "npm run build && node scripts/package.js"

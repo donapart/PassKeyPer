@@ -17,6 +17,7 @@ import ItemsScreen from './src/screens/ItemsScreen'
 import ItemDetailScreen from './src/screens/ItemDetailScreen'
 import GeneratorScreen from './src/screens/GeneratorScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
+import TeamsScreen from './src/screens/TeamsScreen'
 
 // Dark theme matching desktop app
 const theme = {
@@ -91,6 +92,11 @@ export default function App() {
                                     name="Generator"
                                     component={GeneratorScreen}
                                     options={{ title: 'Password Generator' }}
+                                />
+                                <Stack.Screen
+                                    name="Teams"
+                                    component={TeamsScreen}
+                                    options={{ headerShown: false }}
                                 />
                                 <Stack.Screen
                                     name="Settings"

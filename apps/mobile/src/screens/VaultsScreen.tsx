@@ -15,6 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useMobileStore } from '../store/mobile-store'
 import { useSync } from '../hooks/useSync'
+import { SyncStatusIndicator } from '../components/SyncStatusIndicator'
 
 interface VaultsScreenProps {
     navigation: any
@@ -77,13 +78,24 @@ export default function VaultsScreen({ navigation }: VaultsScreenProps) {
                     <Text style={styles.title}>PassKeyPer</Text>
                     <Text style={styles.subtitle}>Select a vault</Text>
                 </View>
-                <TouchableOpacity
-                    style={styles.settingsButton}
-                    onPress={() => navigation.navigate('Settings')}
-                >
-                    <MaterialCommunityIcons name="cog" size={24} color="#94a3b8" />
-                </TouchableOpacity>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={() => navigation.navigate('Teams')}
+                    >
+                        <MaterialCommunityIcons name="account-group" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={() => navigation.navigate('Settings')}
+                    >
+                        <MaterialCommunityIcons name="cog" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            <SyncStatusIndicator />
+
 
             {/* Vaults List */}
             {vaults.length === 0 ? (
@@ -128,9 +140,16 @@ export default function VaultsScreen({ navigation }: VaultsScreenProps) {
                                     />
                                 </View>
                                 <View style={styles.vaultInfo}>
-                                    <Text style={styles.vaultName}>{item.name}</Text>
+                                    <View style={styles.vaultNameRow}>
+                                        <Text style={styles.vaultName}>{item.name}</Text>
+                                        {item.team && (
+                                            <View style={styles.teamBadge}>
+                                                <Text style={styles.teamBadgeText}>{item.team.name}</Text>
+                                            </View>
+                                        )}
+                                    </View>
                                     <Text style={styles.vaultMeta}>
-                                        {item.itemCount || 0} items • {item.type}
+                                        {item._count?.items || 0} items • {item.type}
                                     </Text>
                                 </View>
                                 <MaterialCommunityIcons
@@ -218,7 +237,11 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         marginTop: 4,
     },
-    settingsButton: {
+    headerActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    headerButton: {
         padding: 8,
     },
     emptyState: {
@@ -287,6 +310,25 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         color: '#f1f5f9',
+    },
+    vaultNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    teamBadge: {
+        backgroundColor: '#667eea20',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#667eea40',
+    },
+    teamBadgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#a5b4fc',
+        textTransform: 'uppercase',
     },
     vaultMeta: {
         fontSize: 14,

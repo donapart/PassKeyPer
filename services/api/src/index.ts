@@ -18,6 +18,7 @@ import itemsRouter from './routes/items'
 import syncRouter from './routes/sync'
 import sharingRouter from './routes/sharing'
 import devicesRouter from './routes/devices'
+import teamsRouter from './routes/teams'
 
 // Import WebSocket handler
 import { handleWebSocket } from './websocket'
@@ -54,6 +55,7 @@ app.use('/api/items', itemsRouter)
 app.use('/api/sync', syncRouter)
 app.use('/api/sharing', sharingRouter)
 app.use('/api/devices', devicesRouter)
+app.use('/api/teams', teamsRouter)
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

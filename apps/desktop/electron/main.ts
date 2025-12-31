@@ -2,7 +2,7 @@
  * Electron Main Process
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, net } from 'electron'
 import path from 'path'
 import { VaultStorage } from '@passkeyper/storage'
 import { IpcServer } from './ipc-server'
@@ -156,6 +156,28 @@ ipcMain.handle('login', async (_, email: string, masterPassword: string, saltBas
         const salt = Buffer.from(saltBase64, 'base64')
         const masterKey = await deriveMasterKey(masterPassword, new Uint8Array(salt), 3)
         const { encryptionKey } = deriveKeys(masterKey, email)
+        const serverHash = await deriveServerHash(masterKey, email)
+
+        // Attempt cloud login
+        const loginResponse = await apiCall('/auth/login', 'POST', {
+            email,
+            authHash: serverHash
+        })
+
+        if (loginResponse.twoFactorRequired) {
+            return {
+                success: true,
+                twoFactorRequired: true,
+                email
+            }
+        }
+
+        if (loginResponse.error && !loginResponse.twoFactorRequired) {
+            return {
+                success: false,
+                error: loginResponse.error
+            }
+        }
 
         // Set vault key for storage operations
         if (vaultStorage) {
@@ -169,6 +191,8 @@ ipcMain.handle('login', async (_, email: string, masterPassword: string, saltBas
 
         return {
             success: true,
+            token: loginResponse.token,
+            user: loginResponse.user
         }
     } catch (error: any) {
         return {
@@ -262,6 +286,104 @@ ipcMain.handle('lock-vault', async () => {
         ipcServer.setVaultStorage(vaultStorage) // Re-set, possibly locking it effectively if we had a separate "unlocked" flag, but here we rely on the internal state of vaultStorage
     }
     return { success: true }
+})
+
+/**
+ * Helper for API calls
+ */
+async function apiCall(endpoint: string, method = 'GET', body?: any, token?: string) {
+    const apiUrl = 'http://localhost:3000' // Should be configurable
+    try {
+        const response = await net.fetch(`${apiUrl}/api${endpoint}`, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: body ? JSON.stringify(body) : undefined
+        })
+        if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'API request failed')
+        }
+        return await response.json()
+    } catch (error: any) {
+        console.error(`API Error (${endpoint}):`, error)
+        throw error
+    }
+}
+
+/**
+ * Sharing & Team handlers
+ */
+ipcMain.handle('invite-to-vault', async (_, vaultId, email, permission, token) => {
+    return apiCall('/sharing/invite', 'POST', { vaultId, email, permission }, token)
+})
+
+ipcMain.handle('create-cloud-vault', async (_, vaultData, token) => {
+    return apiCall('/vaults', 'POST', vaultData, token)
+})
+
+ipcMain.handle('list-invites', async (_, type, token) => {
+    return apiCall(`/sharing/invites/${type}`, 'GET', null, token)
+})
+
+ipcMain.handle('accept-invite', async (_, inviteToken, authToken) => {
+    return apiCall('/sharing/accept', 'POST', { token: inviteToken }, authToken)
+})
+
+ipcMain.handle('get-audit-logs', async (_, vaultId, token) => {
+    const url = vaultId ? `/sharing/audit-logs/${vaultId}` : '/sharing/audit-logs'
+    return apiCall(url, 'GET', null, token)
+})
+
+// 2FA Handlers
+ipcMain.handle('setup-2fa', async (_, token) => {
+    return apiCall('/auth/2fa/setup', 'GET', null, token)
+})
+
+ipcMain.handle('enable-2fa', async (_, data, token) => {
+    return apiCall('/auth/2fa/enable', 'POST', data, token)
+})
+
+ipcMain.handle('disable-2fa', async (_, data, token) => {
+    return apiCall('/auth/2fa/disable', 'POST', data, token)
+})
+
+ipcMain.handle('verify-2fa', async (_, data) => {
+    return apiCall('/auth/login/verify-2fa', 'POST', data)
+})
+
+ipcMain.handle('list-teams', async (_, token) => {
+    return apiCall('/teams', 'GET', null, token)
+})
+
+ipcMain.handle('create-team', async (_, teamData, token) => {
+    return apiCall('/teams', 'POST', teamData, token)
+})
+
+ipcMain.handle('get-team', async (_, teamId, token) => {
+    return apiCall(`/teams/${teamId}`, 'GET', null, token)
+})
+
+ipcMain.handle('add-team-member', async (_, teamId, email, role, token) => {
+    return apiCall(`/teams/${teamId}/members`, 'POST', { email, role }, token)
+})
+
+ipcMain.handle('remove-team-member', async (_, teamId, userId, token) => {
+    return apiCall(`/teams/${teamId}/members/${userId}`, 'DELETE', null, token)
+})
+
+ipcMain.handle('update-team', async (_, teamId, teamData, token) => {
+    return apiCall(`/teams/${teamId}`, 'PUT', teamData, token)
+})
+
+ipcMain.handle('update-team-policy', async (_, teamId, policyData, token) => {
+    return apiCall(`/teams/${teamId}/policy`, 'PUT', policyData, token)
+})
+
+ipcMain.handle('delete-team', async (_, teamId, token) => {
+    return apiCall(`/teams/${teamId}`, 'DELETE', null, token)
 })
 
 /**

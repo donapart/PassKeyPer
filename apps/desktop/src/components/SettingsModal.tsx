@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Lock, Clock, Keyboard, Bell, Shield, Database, Cloud } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 import { toast } from './Toast'
+import { TwoFactorSetupModal } from './TwoFactorSetupModal'
 
 interface SettingsModalProps {
     isOpen: boolean
@@ -9,7 +10,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-    const { syncSettings, setSyncSettings } = useAppStore()
+    const { syncSettings, setSyncSettings, setShowImportModal, setShowExportModal } = useAppStore()
 
     const [autoLockMinutes, setAutoLockMinutes] = useState(parseInt(localStorage.getItem('autoLockMinutes') || '15'))
     const [clipboardTimeout, setClipboardTimeout] = useState(parseInt(localStorage.getItem('clipboardTimeout') || '30'))
@@ -19,6 +20,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [syncApiUrl, setSyncApiUrl] = useState(syncSettings.apiUrl)
     const [autoSync, setAutoSync] = useState(syncSettings.autoSync)
     const [syncInterval, setSyncInterval] = useState(syncSettings.syncInterval)
+    const { user, setUser } = useAppStore()
+    const [show2FAModal, setShow2FAModal] = useState(false)
 
     const handleSave = () => {
         // Save settings to localStorage
@@ -38,20 +41,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
 
     const handleExportVault = async () => {
-        try {
-            toast.info('Export functionality coming soon!')
-            // TODO: Implement vault export
-        } catch (error: any) {
-            toast.error('Export failed: ' + error.message)
-        }
+        setShowExportModal(true)
+        onClose()
     }
 
     const handleImportVault = async () => {
+        setShowImportModal(true)
+        onClose()
+    }
+
+    const handle2FASuccess = async () => {
+        // Refresh user info to update 2FA status
         try {
-            toast.info('Import functionality coming soon!')
-            // TODO: Implement vault import
-        } catch (error: any) {
-            toast.error('Import failed: ' + error.message)
+            const token = localStorage.getItem('auth_token') || ''
+            const result = await window.electronAPI.getMe(token)
+            if (result.user) {
+                setUser({
+                    ...result.user,
+                    salt: user?.salt || ''
+                })
+            }
+        } catch (error) {
+            console.error('Failed to refresh user info', error)
         }
     }
 
@@ -134,6 +145,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 <p className="text-xs text-dark-400 mt-1">
                                     Automatically clear clipboard after copying password
                                 </p>
+                            </div>
+
+                            {/* 2FA Status */}
+                            <div className="pt-4 border-t border-dark-700/50">
+                                <div className="flex items-center justify-between p-4 bg-dark-900/40 rounded-xl border border-dark-700/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${user?.twoFactorEnabled ? 'bg-green-600/20' : 'bg-amber-600/20'
+                                            }`}>
+                                            <Smartphone className={`w-5 h-5 ${user?.twoFactorEnabled ? 'text-green-400' : 'text-amber-400'
+                                                }`} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white">Two-Factor Authentication</p>
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider ${user?.twoFactorEnabled ? 'text-green-500' : 'text-amber-500'
+                                                }`}>
+                                                {user?.twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShow2FAModal(true)}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold font-mono transition-all ${user?.twoFactorEnabled
+                                            ? 'bg-dark-700 hover:bg-dark-600 text-white'
+                                            : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-900/20'
+                                            }`}
+                                    >
+                                        {user?.twoFactorEnabled ? 'Manage' : 'Enable'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -300,6 +340,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </button>
                 </div>
             </div>
+
+            <TwoFactorSetupModal
+                isOpen={show2FAModal}
+                onClose={() => setShow2FAModal(false)}
+                onSuccess={handle2FASuccess}
+                isAlreadyEnabled={user?.twoFactorEnabled}
+            />
         </div>
     )
 }

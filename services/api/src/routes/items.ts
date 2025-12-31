@@ -38,11 +38,20 @@ router.post('/', async (req, res) => {
         const item = await prisma.vaultItem.create({
             data: {
                 vaultId,
-                // type, // Schema doesn't have type on VaultItem?
                 encryptedData,
-                // metadata: metadata || {},
                 version: 1,
                 deviceId: deviceId || 'unknown'
+            }
+        })
+
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId,
+                action: 'ITEM_CREATED',
+                resourceType: 'ITEM',
+                resourceId: item.id,
+                details: JSON.stringify({ vaultId, deviceId })
             }
         })
 
@@ -130,11 +139,20 @@ router.put('/:id', async (req, res) => {
             where: { id },
             data: {
                 encryptedData: encryptedData || existingItem.encryptedData,
-                // metadata: metadata || existingItem.metadata, // Metadata not in schema, handled in encryptedData or separate?
                 version: existingItem.version + 1,
-                // lastModifiedBy: deviceId || 'unknown', // Not in schema, using deviceId
                 deviceId: deviceId || 'unknown',
                 updatedAt: new Date()
+            }
+        })
+
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId,
+                action: 'ITEM_UPDATED',
+                resourceType: 'ITEM',
+                resourceId: item.id,
+                details: JSON.stringify({ vaultId: item.vaultId, deviceId })
             }
         })
 
@@ -173,6 +191,17 @@ router.delete('/:id', async (req, res) => {
             where: { id },
             data: {
                 deletedAt: new Date()
+            }
+        })
+
+        // Log action
+        await prisma.auditLog.create({
+            data: {
+                userId,
+                action: 'ITEM_DELETED',
+                resourceType: 'ITEM',
+                resourceId: id,
+                details: JSON.stringify({ vaultId: item.vaultId })
             }
         })
 

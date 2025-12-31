@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, Search, Star, Folder, Key, CreditCard, FileText } from 'lucide-react'
+import { Plus, Search, Star, Folder, Key, CreditCard, FileText, Share2, Activity } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
 import { ItemModal } from './ItemModal'
 import { ItemDetailModal } from './ItemDetailModal'
+import { ShareVaultModal } from './ShareVaultModal'
+import { AuditLogModal } from './AuditLogModal'
+import { SecurityAuditModal } from './SecurityAuditModal'
+import { ShieldAlert } from 'lucide-react'
 
 export function VaultView() {
     const { currentVault, items, setItems, searchQuery, setSearchQuery } = useAppStore()
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [showDetailModal, setShowDetailModal] = useState(false)
+    const [showShareModal, setShowShareModal] = useState(false)
+    const [showAuditLogModal, setShowAuditLogModal] = useState(false)
+    const [showSecurityAuditModal, setShowSecurityAuditModal] = useState(false)
     const [editingItem, setEditingItem] = useState<any>(null)
 
     useEffect(() => {
@@ -95,13 +102,36 @@ export function VaultView() {
                 <div className="p-6 border-b border-dark-800">
                     <div className="flex items-center justify-between mb-4">
                         <h1 className="text-2xl font-bold text-white">{currentVault.name}</h1>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            <Plus className="w-5 h-5" />
-                            New Item
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowSecurityAuditModal(true)}
+                                className="w-10 h-10 flex items-center justify-center hover:bg-dark-700 rounded-lg text-dark-400 hover:text-red-400 transition-colors border border-dark-700"
+                                title="Security Audit"
+                            >
+                                <ShieldAlert className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setShowAuditLogModal(true)}
+                                className="w-10 h-10 flex items-center justify-center hover:bg-dark-700 rounded-lg text-dark-400 hover:text-primary-400 transition-colors border border-dark-700"
+                                title="Activity Log"
+                            >
+                                <Activity className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="w-10 h-10 flex items-center justify-center hover:bg-dark-700 rounded-lg text-dark-400 hover:text-primary-400 transition-colors border border-dark-700"
+                                title="Share Vault"
+                            >
+                                <Share2 className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="btn-primary flex items-center gap-2 ml-2"
+                            >
+                                <Plus className="w-5 h-5" />
+                                New Item
+                            </button>
+                        </div>
                     </div>
 
                     {/* Search */}
@@ -189,6 +219,25 @@ export function VaultView() {
                     onDelete={handleDelete}
                 />
             )}
+
+            <ShareVaultModal
+                isOpen={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                vaultId={currentVault.id}
+                vaultName={currentVault.name}
+            />
+
+            <AuditLogModal
+                isOpen={showAuditLogModal}
+                onClose={() => setShowAuditLogModal(false)}
+                vaultId={currentVault.id}
+                vaultName={currentVault.name}
+            />
+
+            <SecurityAuditModal
+                isOpen={showSecurityAuditModal}
+                onClose={() => setShowSecurityAuditModal(false)}
+            />
         </>
     )
 }

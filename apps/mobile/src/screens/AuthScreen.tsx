@@ -16,6 +16,13 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
+import {
+    deriveMasterKey,
+    deriveServerHash,
+    generateSalt,
+    generateKeyPair,
+    initCrypto
+} from '@passkeyper/core'
 import { useMobileStore } from '../store/mobile-store'
 
 export default function AuthScreen({ navigation }: { navigation: any }) {
@@ -26,6 +33,11 @@ export default function AuthScreen({ navigation }: { navigation: any }) {
     const [isBiometricAvailable, setIsBiometricAvailable] = useState(false)
     const [biometricType, setBiometricType] = useState<string>('')
     const [loading, setLoading] = useState(false)
+
+    // 2FA States
+    const [show2FA, setShow2FA] = useState(false)
+    const [twoFactorCode, setTwoFactorCode] = useState('')
+    const [tempMasterKey, setTempMasterKey] = useState<Uint8Array | null>(null)
 
     useEffect(() => {
         checkBiometric()
@@ -55,8 +67,9 @@ export default function AuthScreen({ navigation }: { navigation: any }) {
             })
 
             if (result.success) {
-                // In a real app, we would retrieve the encrypted password/token from SecureStore here
-                alert('Biometric auth successful (stub)')
+                // In a real app, we would retrieve the encrypted masterKey/token from SecureStore
+                // For now, this is a stub until we implement SecureStore persistence for the master key
+                alert('Biometric auth successful (STUB). Please log in with password first.')
             }
         } catch (error) {
             console.error('Biometric auth error:', error)
@@ -71,21 +84,48 @@ export default function AuthScreen({ navigation }: { navigation: any }) {
 
         setLoading(true)
         try {
-            const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login'
-            const payload = isRegister
-                ? {
-                    email,
-                    authHash: password, // In production, use crypto.subtle.digest
-                    authSalt: 'mobile-salt',
-                    publicKey: 'mobile-pk',
-                    encryptedPrivateKey: 'mobile-sk'
-                }
-                : {
-                    email,
-                    authHash: password // In production, use crypto.subtle.digest
-                }
+            await initCrypto()
 
-            // Note: Android Emulator needs 10.0.2.2 usually, but syncSettings.apiUrl is configurable
+            let payload: any = { email }
+            let masterKey: Uint8Array
+
+            if (isRegister) {
+                // REGISTRATION
+                const salt = generateSalt()
+                masterKey = await deriveMasterKey(password, salt)
+                const authHash = await deriveServerHash(masterKey, email)
+
+                // Generate sharing keys
+                const keypair = await generateKeyPair()
+
+                payload = {
+                    ...payload,
+                    authHash,
+                    authSalt: Buffer.from(salt).toString('base64'),
+                    publicKey: Buffer.from(keypair.publicKey).toString('base64'),
+                    encryptedPrivateKey: Buffer.from(keypair.privateKey).toString('base64') // Note: In reality, encrypt this!
+                }
+            } else {
+                // LOGIN
+                // 1. Get salt from server first (simplified: assuming fixed or fetched)
+                // In a real app, we'd hit /api/auth/salt?email=...
+                const saltResponse = await fetch(`${syncSettings.apiUrl}/api/auth/salt?email=${encodeURIComponent(email)}`)
+                if (!saltResponse.ok) {
+                    throw new Error('User not found or error fetching salt')
+                }
+                const { salt: saltBase64 } = await saltResponse.json()
+                const salt = new Uint8Array(Buffer.from(saltBase64, 'base64'))
+
+                masterKey = await deriveMasterKey(password, salt)
+                const authHash = await deriveServerHash(masterKey, email)
+
+                payload = {
+                    ...payload,
+                    authHash
+                }
+            }
+
+            const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login'
             const response = await fetch(`${syncSettings.apiUrl}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -94,17 +134,46 @@ export default function AuthScreen({ navigation }: { navigation: any }) {
 
             const data = await response.json()
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Authentication failed')
+            if (data.twoFactorRequired) {
+                setShow2FA(true)
+                setTempMasterKey(masterKey)
+                return
             }
 
             if (data.token && data.user) {
-                login(data.user, data.token)
-                // Navigation handled by App.tsx state change
+                // Successful login
+                login(data.user, data.token, masterKey)
             }
         } catch (error: any) {
             console.error(error)
-            alert(error.message || 'Error occurred')
+            alert(error.message || 'Error occurred during authentication')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handle2FAVerify = async () => {
+        if (twoFactorCode.length !== 6) return
+
+        setLoading(true)
+        try {
+            const response = await fetch(`${syncSettings.apiUrl}/api/auth/login/verify-2fa`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    code: twoFactorCode
+                })
+            })
+
+            const data = await response.json()
+            if (!response.ok) throw new Error(data.error || 'Invalid 2FA code')
+
+            if (data.token && data.user && tempMasterKey) {
+                login(data.user, data.token, tempMasterKey)
+            }
+        } catch (error: any) {
+            alert(error.message)
         } finally {
             setLoading(false)
         }
@@ -117,95 +186,148 @@ export default function AuthScreen({ navigation }: { navigation: any }) {
         >
             <View style={styles.content}>
                 {/* Logo */}
-                <View style={styles.logoContainer}>
-                    <MaterialCommunityIcons name="shield-key" size={80} color="#667eea" />
-                    <Text style={styles.title}>PassKeyPer</Text>
+                <View style={[styles.logoContainer, show2FA && { marginBottom: 24 }]}>
+                    <Image
+                        source={require('../../assets/logo.png')}
+                        style={[styles.logo, show2FA && { width: 60, height: 60 }]}
+                        resizeMode="contain"
+                    />
+                    <Text style={[styles.title, show2FA && { fontSize: 24 }]}>PassKeyPer</Text>
                     <Text style={styles.subtitle}>
-                        {isRegister ? 'Create your vault' : 'Welcome back'}
+                        {show2FA ? 'Two-Factor Verification' : isRegister ? 'Create your vault' : 'Welcome back'}
                     </Text>
                 </View>
 
-                {/* Biometric Button */}
-                {isBiometricAvailable && !isRegister && (
-                    <TouchableOpacity
-                        style={styles.biometricButton}
-                        onPress={handleBiometricAuth}
-                    >
-                        <MaterialCommunityIcons
-                            name={
-                                biometricType === 'Face ID'
-                                    ? 'face-recognition'
-                                    : 'fingerprint'
-                            }
-                            size={32}
-                            color="#667eea"
-                        />
-                        <Text style={styles.biometricText}>
-                            Unlock with {biometricType}
+                {show2FA ? (
+                    <View style={styles.formContainer}>
+                        <View style={styles.twoFactorIconContainer}>
+                            <MaterialCommunityIcons name="shield-lock" size={48} color="#667eea" />
+                        </View>
+                        <Text style={styles.twoFactorText}>Enter the code from your app or a recovery code</Text>
+
+                        <View style={styles.inputContainer}>
+                            <MaterialCommunityIcons name="numeric" size={20} color="#94a3b8" />
+                            <TextInput
+                                style={[styles.input, { textAlign: 'center', letterSpacing: 4, fontSize: 20 }]}
+                                placeholder="000XXX"
+                                placeholderTextColor="#64748b"
+                                value={twoFactorCode}
+                                onChangeText={(text) => setTwoFactorCode(text.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                keyboardType="default"
+                                maxLength={10}
+                                autoFocus
+                            />
+                        </View>
+
+                        <Text style={[styles.securityText, { textAlign: 'center', marginBottom: 16, color: '#94a3b8' }]}>
+                            Use a 10-character recovery code if you lost your device.
                         </Text>
-                    </TouchableOpacity>
-                )}
 
-                {/* Divider */}
-                {isBiometricAvailable && !isRegister && (
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>or</Text>
-                        <View style={styles.dividerLine} />
+                        <TouchableOpacity
+                            style={[styles.authButton, { opacity: (twoFactorCode.length === 6 || twoFactorCode.length === 10) ? 1 : 0.6 }]}
+                            onPress={handle2FAVerify}
+                            disabled={(twoFactorCode.length !== 6 && twoFactorCode.length !== 10) || loading}
+                        >
+                            <Text style={styles.authButtonText}>
+                                {loading ? 'Verifying...' : 'Verify & Unlock'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.toggleButton}
+                            onPress={() => {
+                                setShow2FA(false)
+                                setTwoFactorCode('')
+                            }}
+                        >
+                            <Text style={styles.toggleText}>Back to login</Text>
+                        </TouchableOpacity>
                     </View>
+                ) : (
+                    <>
+                        {/* Biometric Button */}
+                        {isBiometricAvailable && !isRegister && (
+                            <TouchableOpacity
+                                style={styles.biometricButton}
+                                onPress={handleBiometricAuth}
+                            >
+                                <MaterialCommunityIcons
+                                    name={
+                                        biometricType === 'Face ID'
+                                            ? 'face-recognition'
+                                            : 'fingerprint'
+                                    }
+                                    size={32}
+                                    color="#667eea"
+                                />
+                                <Text style={styles.biometricText}>
+                                    Unlock with {biometricType}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Divider */}
+                        {isBiometricAvailable && !isRegister && (
+                            <View style={styles.divider}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>or</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
+                        )}
+
+                        {/* Email Input */}
+                        <View style={styles.inputContainer}>
+                            <MaterialCommunityIcons name="email-outline" size={20} color="#94a3b8" />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email"
+                                placeholderTextColor="#64748b"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </View>
+
+                        {/* Password Input */}
+                        <View style={styles.inputContainer}>
+                            <MaterialCommunityIcons name="lock-outline" size={20} color="#94a3b8" />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Master Password"
+                                placeholderTextColor="#64748b"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </View>
+
+                        {/* Auth Button */}
+                        <TouchableOpacity
+                            style={styles.authButton}
+                            onPress={handlePasswordAuth}
+                        >
+                            <Text style={styles.authButtonText}>
+                                {loading ? 'Checking...' : isRegister ? 'Create Account' : 'Unlock Vault'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {/* Toggle Register/Login */}
+                        <TouchableOpacity
+                            style={styles.toggleButton}
+                            onPress={() => setIsRegister(!isRegister)}
+                        >
+                            <Text style={styles.toggleText}>
+                                {isRegister
+                                    ? 'Already have an account? Sign in'
+                                    : "Don't have an account? Create one"}
+                            </Text>
+                        </TouchableOpacity>
+                    </>
                 )}
-
-                {/* Email Input */}
-                <View style={styles.inputContainer}>
-                    <MaterialCommunityIcons name="email-outline" size={20} color="#94a3b8" />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor="#64748b"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-                </View>
-
-                {/* Password Input */}
-                <View style={styles.inputContainer}>
-                    <MaterialCommunityIcons name="lock-outline" size={20} color="#94a3b8" />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Master Password"
-                        placeholderTextColor="#64748b"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-                </View>
-
-                {/* Auth Button */}
-                <TouchableOpacity
-                    style={styles.authButton}
-                    onPress={handlePasswordAuth}
-                >
-                    <Text style={styles.authButtonText}>
-                        {isRegister ? 'Create Account' : 'Unlock Vault'}
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Toggle Register/Login */}
-                <TouchableOpacity
-                    style={styles.toggleButton}
-                    onPress={() => setIsRegister(!isRegister)}
-                >
-                    <Text style={styles.toggleText}>
-                        {isRegister
-                            ? 'Already have an account? Sign in'
-                            : "Don't have an account? Create one"}
-                    </Text>
-                </TouchableOpacity>
 
                 {/* Security Note */}
                 <View style={styles.securityNote}>
@@ -232,6 +354,10 @@ const styles = StyleSheet.create({
     logoContainer: {
         alignItems: 'center',
         marginBottom: 48,
+    },
+    logo: {
+        width: 100,
+        height: 100,
     },
     title: {
         fontSize: 32,
@@ -327,4 +453,18 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginLeft: 8,
     },
+    twoFactorIconContainer: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    twoFactorText: {
+        color: '#94a3b8',
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    formContainer: {
+        width: '100%',
+    }
 })

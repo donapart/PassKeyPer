@@ -5,6 +5,7 @@ import { TitleBar } from './components/TitleBar'
 import { LoginScreen } from './components/LoginScreen'
 import { Sidebar } from './components/Sidebar'
 import { VaultView } from './components/VaultView'
+import { TeamsView } from './components/TeamsView'
 import { SettingsModal } from './components/SettingsModal'
 import { ImportModal } from './components/ImportModal'
 import { ExportModal } from './components/ExportModal'
@@ -29,7 +30,8 @@ function App() {
         conflicts,
         setConflicts,
         syncSettings,
-        currentVault
+        currentVault,
+        currentView
     } = useAppStore()
     const [showSettings, setShowSettings] = useState(false)
 
@@ -116,7 +118,7 @@ function App() {
                 })
                 setVaults([defaultVault])
                 setCurrentVault(defaultVault)
-            } else {
+            } else if (!currentVault) {
                 // Select first vault by default
                 setCurrentVault(vaults[0])
             }
@@ -127,17 +129,15 @@ function App() {
 
     const handleImport = async (importedItems: any[]) => {
         try {
-            // TODO: Save imported items to vault
-            // For now, just update state
             setItems([...items, ...importedItems])
-            console.log('Imported items:', importedItems)
+            toast.success(`${importedItems.length} items imported successfully`)
         } catch (error) {
             console.error('Failed to import items:', error)
         }
     }
 
     return (
-        <div className="h-screen flex flex-col bg-dark-900">
+        <div className="h-screen flex flex-col bg-dark-900 overflow-hidden">
             <TitleBar />
 
             {showLogin ? (
@@ -146,11 +146,9 @@ function App() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 flex overflow-hidden">
                         <Sidebar />
-                        <VaultView />
+                        {currentView === 'teams' ? <TeamsView /> : <VaultView />}
                     </div>
-                        <VaultView />
-                    </div>
-                    <SyncStatusBar 
+                    <SyncStatusBar
                         sync={sync}
                         isConnected={isConnected}
                         isSyncing={isSyncing}
@@ -160,10 +158,9 @@ function App() {
                         itemsConflicted={itemsConflicted}
                     />
                 </div>
-    )
-}
+            )}
 
-{/* Modals */ }
+            {/* Modals */}
             <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
 
             <ImportModal
@@ -186,9 +183,9 @@ function App() {
                 onResolve={handleResolveConflict}
             />
 
-{/* Toast notifications */ }
-<ToastContainer />
-        </div >
+            {/* Toast notifications */}
+            <ToastContainer />
+        </div>
     )
 }
 

@@ -7,6 +7,7 @@ import { create } from 'zustand'
 interface User {
     email: string
     salt: string
+    twoFactorEnabled: boolean
 }
 
 interface Vault {
@@ -54,6 +55,8 @@ interface AppState {
     showImportModal: boolean
     showExportModal: boolean
     showConflictModal: boolean
+    setShowImportModal: (show: boolean) => void
+    setShowExportModal: (show: boolean) => void
 
     // Sync Conflicts
     conflicts: any[]
@@ -70,6 +73,16 @@ interface AppState {
     // Search
     searchQuery: string
     setSearchQuery: (query: string) => void
+
+    // Sharing
+    shares: any[]
+    invites: any[]
+    setShares: (shares: any[]) => void
+    setInvites: (invites: any[]) => void
+
+    // Navigation
+    currentView: 'vaults' | 'teams'
+    setCurrentView: (view: 'vaults' | 'teams') => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -102,6 +115,8 @@ export const useAppStore = create<AppState>((set) => ({
     showImportModal: false,
     showExportModal: false,
     showConflictModal: false,
+    setShowImportModal: (show) => set({ showImportModal: show }),
+    setShowExportModal: (show) => set({ showExportModal: show }),
 
     // Sync Conflicts
     conflicts: [],
@@ -125,4 +140,14 @@ export const useAppStore = create<AppState>((set) => ({
     // Search
     searchQuery: '',
     setSearchQuery: (query) => set({ searchQuery: query }),
+
+    // Sharing
+    shares: [],
+    invites: [],
+    setShares: (shares) => set({ shares }),
+    setInvites: (invites) => set({ invites }),
+
+    // Navigation
+    currentView: 'vaults',
+    setCurrentView: (view) => set({ currentView: view }),
 }))

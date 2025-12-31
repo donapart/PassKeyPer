@@ -149,11 +149,37 @@ export function TOTPSetup({ onAdd, onCancel }: TOTPSetupProps) {
         }
 
         try {
-            // TODO: Parse URI
-            // For now, show error
-            setError('URI parsing coming soon')
-        } catch (err) {
-            setError('Invalid TOTP URI')
+            // Basic otpauth URI parsing
+            // otpauth://totp/Issuer:Email?secret=SECRET&issuer=Issuer&period=30
+            if (!uri.startsWith('otpauth://totp/')) {
+                throw new Error('Not a valid TOTP URI')
+            }
+
+            const urlParts = uri.split('?')
+            const pathParts = urlParts[0].split('/')
+            const label = decodeURIComponent(pathParts[pathParts.length - 1])
+
+            const params = new URLSearchParams(urlParts[1])
+            const secretParam = params.get('secret')
+            const issuerParam = params.get('issuer') || label.split(':')[0]
+            const periodParam = params.get('period')
+            const digitsParam = params.get('digits')
+
+            if (!secretParam) {
+                throw new Error('Secret parameter missing in URI')
+            }
+
+            onAdd({
+                secret: secretParam,
+                issuer: issuerParam || undefined,
+                period: periodParam ? parseInt(periodParam) : undefined,
+                digits: digitsParam ? parseInt(digitsParam) : undefined
+            })
+
+            setError('')
+            setUri('')
+        } catch (err: any) {
+            setError(err.message || 'Invalid TOTP URI')
         }
     }
 

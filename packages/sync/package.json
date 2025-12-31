@@ -1,6 +1,6 @@
 {
     "name": "@passkeyper/sync",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Cloud synchronization service for PassKeyPer",
     "main": "dist/index.js",
     "module": "dist/index.mjs",

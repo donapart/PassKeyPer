@@ -1,15 +1,24 @@
 import { useCallback, useEffect } from 'react'
 import { useMobileStore } from '../store/mobile-store'
+import { decrypt, initCrypto } from '@passkeyper/core'
 
 export function useSync() {
     const {
         authToken,
         syncSettings,
         setVaults,
+        setTeams,
         setItems,
         updateLastSync,
-        isAuthenticated
+        isAuthenticated,
+        encryptionKey,
+        fetchTeams: storeFetchTeams
     } = useMobileStore()
+
+    const fetchTeams = useCallback(async () => {
+        if (!authToken) return
+        await storeFetchTeams()
+    }, [authToken, storeFetchTeams])
 
     const fetchVaults = useCallback(async () => {
         if (!authToken) return
@@ -31,7 +40,7 @@ export function useSync() {
     }, [authToken, syncSettings.apiUrl, setVaults])
 
     const fetchItems = useCallback(async (vaultId: string) => {
-        if (!authToken) return
+        if (!authToken || !encryptionKey) return
 
         try {
             const response = await fetch(`${syncSettings.apiUrl}/api/items?vaultId=${vaultId}`, {
@@ -42,23 +51,51 @@ export function useSync() {
 
             if (response.ok) {
                 const data = await response.json()
-                // Flatten metadata into items for UI consumption
-                const items = (data.items || []).map((item: any) => ({
-                    ...item,
-                    ...item.metadata,
-                    id: item.id
+                const rawItems = data.items || []
+
+                await initCrypto()
+
+                const decryptedItems = await Promise.all(rawItems.map(async (item: any) => {
+                    try {
+                        let metadata = item.metadata || {}
+
+                        // If we have encryptedData, decrypt it and merge with metadata
+                        if (item.encryptedData) {
+                            const decryptedJson = await decrypt(item.encryptedData, encryptionKey)
+                            const decryptedData = JSON.parse(decryptedJson)
+                            metadata = { ...metadata, ...decryptedData }
+                        }
+
+                        return {
+                            ...item,
+                            ...metadata,
+                            id: item.id
+                        }
+                    } catch (err) {
+                        console.error(`Failed to decrypt item ${item.id}`, err)
+                        return {
+                            ...item,
+                            ...item.metadata,
+                            id: item.id,
+                            _decryptionError: true
+                        }
+                    }
                 }))
-                setItems(items)
+
+                setItems(decryptedItems)
             }
         } catch (e) {
             console.error('Failed to fetch items', e)
         }
-    }, [authToken, syncSettings.apiUrl, setItems])
+    }, [authToken, syncSettings.apiUrl, setItems, encryptionKey])
 
     const syncAll = useCallback(async () => {
-        await fetchVaults()
+        await Promise.all([
+            fetchVaults(),
+            fetchTeams()
+        ])
         updateLastSync()
-    }, [fetchVaults, updateLastSync])
+    }, [fetchVaults, fetchTeams, updateLastSync])
 
     // Auto-sync on mount if enabled
     useEffect(() => {
@@ -69,7 +106,9 @@ export function useSync() {
 
     return {
         fetchVaults,
+        fetchTeams,
         fetchItems,
         syncAll
     }
 }
+

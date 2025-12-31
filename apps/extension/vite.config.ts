@@ -1,21 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { crx } from '@crxjs/vite-plugin'
-import manifest from './manifest.json'
+import webExtension from 'vite-plugin-web-extension'
 
 export default defineConfig({
     plugins: [
         react(),
-        crx({ manifest })
+        webExtension({
+            manifest: './manifest.json',
+            watchFilePaths: ['manifest.json'],
+        })
     ],
     build: {
         outDir: 'dist',
-        rollupOptions: {
-            input: {
-                popup: 'src/popup/index.html',
-                options: 'src/options/index.html'
-            }
-        }
     },
     server: {
         port: 5173,

@@ -12,164 +12,257 @@ datasource db {
 
 // User accounts
 model User {
-  id String @id @default(cuid())
-  email String @unique
+  id            String    @id @default(cuid())
+  email         String    @unique
   emailVerified DateTime?
-  
+
   // Encrypted authentication data
   authSalt String // For Argon2id
   authHash String // Hashed master password (for server verification)
-  
+
   // Encryption keys (encrypted with derived key)
   encryptedPrivateKey String
-  publicKey String
-  
+  publicKey           String
+
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
-  
+
+  // Security
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // Encrypted 2FA secret
+  twoFactorRecoveryCodes String? // JSON array of hashed recovery codes
+
   // Relations
-  vaults Vault[]
-  devices Device[]
-  sessions Session[]
-  shareInvites ShareInvite[]
-  
+  vaults      Vault[]
+  shares      VaultShare[]
+  devices     Device[]
+  sessions    Session[]
+  sentInvites ShareInvite[] @relation("InviterRelation")
+  auditLogs   AuditLog[]
+  teams       TeamMember[]
+
   @@index([email])
 }
 
 // User devices (for multi-device sync)
 model Device {
-  id String @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  name String
-  type String // desktop, mobile, web, extension
-  platform String? // windows, macos, linux, ios, android
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        String // desktop, mobile, web, extension
+  platform    String? // windows, macos, linux, ios, android
   fingerprint String? // unique device identifier
-  
+
   lastSyncAt DateTime?
   lastSeenAt DateTime?
-  createdAt DateTime @default(now())
-  
+  createdAt  DateTime  @default(now())
+
   @@index([userId])
 }
 
 // User sessions
 model Session {
-  id String @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  token String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token    String  @unique
   deviceId String?
-  
+
   expiresAt DateTime
   createdAt DateTime @default(now())
-  
+
   @@index([userId])
   @@index([token])
 }
 
 // Vaults
 model Vault {
-  id String @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Encrypted vault data
-  name String // Encrypted
-  type String // personal, work, shared
+  name         String // Encrypted
+  type         String // personal, work, shared
   encryptedKey String // Vault key encrypted with user's public key
-  
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
-  items VaultItem[]
-  shares VaultShare[]
-  
+  items        VaultItem[]
+  shares       VaultShare[]
+  shareInvites ShareInvite[]
+
   @@index([userId])
 }
 
 // Vault items (encrypted)
 model VaultItem {
-  id String @id @default(cuid())
+  id      String @id @default(cuid())
   vaultId String
-  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  
+  vault   Vault  @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
   // Encrypted data (entire item encrypted as blob)
   encryptedData String
-  
+
   // Metadata (for sync)
-  version Int @default(1)
+  version   Int       @default(1)
   deletedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   // Conflict resolution
-  deviceId String?
+  deviceId      String?
   conflictsWith String?
-  
+
   @@index([vaultId])
   @@index([updatedAt])
 }
 
 // Vault sharing
 model VaultShare {
-  id String @id @default(cuid())
+  id      String @id @default(cuid())
   vaultId String
-  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
-  
-  sharedWithEmail String
+  vault   Vault  @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  userId String // Recipient ID
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   permission String // read, write, admin
-  
-  // Encrypted vault key for recipient
+
+  // Encrypted vault key for recipient (encrypted with recipient's public key)
   encryptedVaultKey String
-  
-  acceptedAt DateTime?
+
   createdAt DateTime @default(now())
-  
+  updatedAt DateTime @updatedAt
+
+  @@unique([vaultId, userId])
   @@index([vaultId])
-  @@index([sharedWithEmail])
-  @@unique([vaultId, sharedWithEmail])
+  @@index([userId])
 }
 
 // Share invitations
 model ShareInvite {
-  id String @id @default(cuid())
+  id        String @id @default(cuid())
   inviterId String
-  inviter User @relation(fields: [inviterId], references: [id], onDelete: Cascade)
-  
+  inviter   User   @relation("InviterRelation", fields: [inviterId], references: [id], onDelete: Cascade)
+
   recipientEmail String
-  vaultId String
-  permission String
-  
-  token String @unique
+  vaultId        String
+  vault          Vault  @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  permission     String
+
+  // Encrypted vault key for recipient (prepared by inviter using recipient's public key if available)
+  // Or recipient generates it after opening invite? 
+  // Privacy wise: Inviter needs recipient's public key to encrypt vault key.
+  encryptedVaultKey String?
+
+  status    String   @default("pending") // pending, accepted, declined, expired
+  token     String   @unique
   expiresAt DateTime
-  acceptedAt DateTime?
-  
+
   createdAt DateTime @default(now())
-  
+  updatedAt DateTime @updatedAt
+
   @@index([recipientEmail])
   @@index([token])
+  @@index([inviterId])
+}
+
+// Audit Logs for security and teams
+model AuditLog {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action       String // e.g., "VAULT_ACCESS", "ITEM_UPDATE", "SHARE_INVITE"
+  resourceType String // e.g., "VAULT", "ITEM"
+  resourceId   String
+
+  details   String? // JSON metadata
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceId])
 }
 
 // Sync log (for conflict resolution)
 model SyncLog {
   id String @id @default(cuid())
-  
-  userId String
+
+  userId   String
   deviceId String
-  vaultId String
-  itemId String
-  
-  action String // create, update, delete
-  version Int
+  vaultId  String
+  itemId   String
+
+  action    String // create, update, delete
+  version   Int
   timestamp DateTime @default(now())
-  
+
   @@index([userId, vaultId])
   @@index([timestamp])
+}
+
+// Teams and Groups
+model Team {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members TeamMember[]
+  vaults  Vault[]
+  policy  TeamPolicy?
+}
+
+// Team security policies
+model TeamPolicy {
+  id     String @id @default(cuid())
+  teamId String @unique
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Password requirements
+  minPasswordLength Int     @default(12)
+  requireUppercase  Boolean @default(true)
+  requireLowercase  Boolean @default(true)
+  requireNumbers    Boolean @default(true)
+  requireSymbols    Boolean @default(true)
+
+  // Security settings
+  twoFactorRequired Boolean @default(false)
+  autoLockTimeout   Int     @default(15) // Minutes
+
+  updatedAt DateTime @updatedAt
+}
+
+model TeamMember {
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role String @default("MEMBER") // OWNER, ADMIN, MEMBER
+
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
 }

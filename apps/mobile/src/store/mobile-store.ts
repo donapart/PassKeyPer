@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import {
+    deriveMasterKey,
+    deriveKeys,
+    deriveServerHash,
+    encrypt,
+    decrypt,
+    generateEncryptionKey,
+    initCrypto
+} from '@passkeyper/core'
 
 interface User {
     id: string
@@ -12,7 +21,16 @@ interface User {
 interface Vault {
     id: string
     name: string
-    type: 'personal' | 'shared'
+    type: 'personal' | 'shared' | 'work'
+    teamId?: string
+    team?: { id: string, name: string }
+}
+
+interface Team {
+    id: string
+    name: string
+    description: string
+    _count: { members: number, vaults: number }
 }
 
 interface Item {
@@ -31,13 +49,19 @@ interface SyncSettings {
 }
 
 interface MobileState {
-    // Auth
+    // Auth - Persisted
     user: User | null
     isAuthenticated: boolean
     authToken: string | null
 
+    // Auth - Volatile
+    masterKey: Uint8Array | null
+    encryptionKey: Uint8Array | null
+    authKey: Uint8Array | null
+
     // Data
     vaults: Vault[]
+    teams: Team[]
     items: Item[]
     currentVault: Vault | null
     searchQuery: string
@@ -46,14 +70,16 @@ interface MobileState {
     syncSettings: SyncSettings
 
     // Actions
-    login: (user: User, token: string) => void
+    login: (user: User, token: string, masterKey: Uint8Array) => void
     logout: () => void
     setVaults: (vaults: Vault[]) => void
+    setTeams: (teams: Team[]) => void
     setItems: (items: Item[]) => void
     setSyncSettings: (settings: Partial<SyncSettings>) => void
     updateLastSync: () => void
     setCurrentVault: (vault: Vault | null) => void
-    createVault: (name: string, type: 'personal' | 'shared') => Promise<void>
+    fetchTeams: () => Promise<void>
+    createVault: (name: string, type: 'personal' | 'shared' | 'work', teamId?: string) => Promise<void>
     setSearchQuery: (query: string) => void
 
     // Item CRUD
@@ -68,7 +94,11 @@ export const useMobileStore = create<MobileState>()(
             user: null,
             isAuthenticated: false,
             authToken: null,
+            masterKey: null,
+            encryptionKey: null,
+            authKey: null,
             vaults: [],
+            teams: [],
             items: [],
             currentVault: null,
             searchQuery: '',
@@ -79,11 +109,34 @@ export const useMobileStore = create<MobileState>()(
                 lastSync: null
             },
 
-            login: (user, token) => set({ user, authToken: token, isAuthenticated: true }),
+            login: (user, token, masterKey) => {
+                const { encryptionKey, authKey } = deriveKeys(masterKey, user.email)
+                set({
+                    user,
+                    authToken: token,
+                    isAuthenticated: true,
+                    masterKey,
+                    encryptionKey,
+                    authKey
+                })
+            },
 
-            logout: () => set({ user: null, authToken: null, isAuthenticated: false, vaults: [], items: [], currentVault: null, searchQuery: '' }),
+            logout: () => set({
+                user: null,
+                authToken: null,
+                isAuthenticated: false,
+                masterKey: null,
+                encryptionKey: null,
+                authKey: null,
+                vaults: [],
+                items: [],
+                currentVault: null,
+                searchQuery: ''
+            }),
 
             setVaults: (vaults) => set({ vaults }),
+
+            setTeams: (teams) => set({ teams }),
 
             setItems: (items) => set({ items }),
 
@@ -91,9 +144,28 @@ export const useMobileStore = create<MobileState>()(
 
             setSearchQuery: (query) => set({ searchQuery: query }),
 
-            createVault: async (name, type) => {
-                const { syncSettings, authToken, vaults } = get()
+            fetchTeams: async () => {
+                const { syncSettings, authToken } = get()
                 try {
+                    const response = await fetch(`${syncSettings.apiUrl}/api/teams`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    })
+                    if (response.ok) {
+                        const data = await response.json()
+                        set({ teams: data.teams || [] })
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch teams', e)
+                }
+            },
+
+            createVault: async (name, type, teamId) => {
+                const { syncSettings, authToken, vaults, encryptionKey } = get()
+                if (!encryptionKey) return
+
+                try {
+                    // In a real app, we'd generate a vault key and encrypt it with user's encryptionKey
+                    // For now, we'll use a simplified version for the sync API
                     const response = await fetch(`${syncSettings.apiUrl}/api/vaults`, {
                         method: 'POST',
                         headers: {
@@ -103,7 +175,8 @@ export const useMobileStore = create<MobileState>()(
                         body: JSON.stringify({
                             name,
                             type,
-                            encryptedKey: 'mock-key' // In real app, generate key
+                            teamId,
+                            encryptedKey: 'placeholder-vault-key'
                         })
                     })
 
@@ -118,15 +191,27 @@ export const useMobileStore = create<MobileState>()(
             },
 
             createItem: async (itemData) => {
-                const { syncSettings, authToken, items, currentVault } = get()
-                if (!currentVault) return
+                const { syncSettings, authToken, items, currentVault, encryptionKey } = get()
+                if (!currentVault || !encryptionKey) return
 
                 try {
-                    // Start with basic payload structure
+                    // Encrypt metadata
+                    const plaintext = JSON.stringify({
+                        name: itemData.name,
+                        username: itemData.username,
+                        url: itemData.url,
+                        password: itemData.password,
+                        notes: itemData.notes,
+                        fields: itemData.fields || []
+                    })
+
+                    await initCrypto()
+                    const encryptedData = await encrypt(plaintext, encryptionKey)
+
                     const payload = {
                         vaultId: currentVault.id,
                         type: itemData.type || 'password',
-                        encryptedData: 'mock-encrypted-data', // Real app needs encryption
+                        encryptedData,
                         metadata: {
                             name: itemData.name,
                             username: itemData.username,
@@ -145,17 +230,12 @@ export const useMobileStore = create<MobileState>()(
 
                     if (response.ok) {
                         const data = await response.json()
-                        const newItem = data // Item response
-                        // Merge metadata into item object for easier consumption in UI if API doesn't flatten
-                        // But UI expects item.name etc. API returns item with metadata JSON.
-                        // We'll flatten it here for the store state?
-                        // Or ensure UI handles it. The UI code expects `item.name`.
-                        const flatItem = {
-                            ...newItem,
-                            ...newItem.metadata,
-                            id: newItem.id
+                        const newItem = {
+                            ...data,
+                            ...itemData, // Use local data for UI responsiveness
+                            id: data.id
                         }
-                        set({ items: [...items, flatItem] })
+                        set({ items: [...items, newItem] })
                     }
                 } catch (e) {
                     console.error('Failed to create item', e)
@@ -163,8 +243,21 @@ export const useMobileStore = create<MobileState>()(
             },
 
             updateItem: async (id, itemData) => {
-                const { syncSettings, authToken, items } = get()
+                const { syncSettings, authToken, items, encryptionKey } = get()
+                if (!encryptionKey) return
+
                 try {
+                    const item = items.find(i => i.id === id)
+                    if (!item) return
+
+                    const plaintext = JSON.stringify({
+                        ...itemData,
+                        id
+                    })
+
+                    await initCrypto()
+                    const encryptedData = await encrypt(plaintext, encryptionKey)
+
                     const response = await fetch(`${syncSettings.apiUrl}/api/items/${id}`, {
                         method: 'PUT',
                         headers: {
@@ -172,18 +265,22 @@ export const useMobileStore = create<MobileState>()(
                             'Authorization': `Bearer ${authToken}`
                         },
                         body: JSON.stringify({
-                            // Real app needs to re-encrypt data
-                            encryptedData: 'mock-updated-encrypted-data',
-                            version: (items.find(i => i.id === id)?.version || 0)
+                            encryptedData,
+                            version: (item.version || 0) + 1,
+                            metadata: {
+                                name: itemData.name,
+                                username: itemData.username,
+                                url: itemData.url
+                            }
                         })
                     })
 
                     if (response.ok) {
                         const data = await response.json()
                         const updatedItem = {
-                            ...items.find(i => i.id === id),
+                            ...item,
                             ...data,
-                            ...itemData // Optimistic update or waiting for metadata support in API response
+                            ...itemData
                         }
                         set({ items: items.map(i => i.id === id ? updatedItem : i) })
                     }
@@ -226,8 +323,10 @@ export const useMobileStore = create<MobileState>()(
                 authToken: state.authToken,
                 syncSettings: state.syncSettings,
                 vaults: state.vaults,
+                teams: state.teams,
                 items: state.items
             })
         }
     )
 )
+

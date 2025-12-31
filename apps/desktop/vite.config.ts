@@ -6,25 +6,40 @@ import path from 'path'
 export default defineConfig({
     plugins: [
         react(),
-        electron({
-            entry: 'electron/main.ts',
-            vite: {
-                build: {
-                    outDir: 'dist-electron',
+        electron([
+            {
+                entry: 'electron/main.ts',
+                vite: {
+                    build: {
+                        outDir: 'dist-electron',
+                        minify: false,
+                        rollupOptions: {
+                            external: [
+                                'node-ipc',
+                                'electron',
+                                'better-sqlite3',
+                                '@libsql/client',
+                                '@passkeyper/storage',
+                            ],
+                        },
+                    },
                 },
             },
-        }),
-        electron({
-            entry: 'electron/preload.ts',
-            onstart(options) {
-                options.reload()
-            },
-            vite: {
-                build: {
-                    outDir: 'dist-electron',
+            {
+                entry: 'electron/preload.ts',
+                onstart(options) {
+                    options.reload()
+                },
+                vite: {
+                    build: {
+                        outDir: 'dist-electron',
+                        rollupOptions: {
+                            external: ['electron'],
+                        },
+                    },
                 },
             },
-        }),
+        ]),
     ],
     resolve: {
         alias: {

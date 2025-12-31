@@ -1,11 +1,28 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import pkpLogo from '../assets/pkp_logo.png'
-import { Vault, ChevronDown, Plus, FolderPlus, Lock, Download, Upload } from 'lucide-react'
+import { KeyRound, ChevronDown, Plus, FolderPlus, Lock, Download, Upload, Mail, ShieldCheck, Users } from 'lucide-react'
 import { useAppStore } from '../store/app-store'
+import { InvitesModal } from './InvitesModal'
 
 export function Sidebar() {
-    const { vaults, currentVault, setCurrentVault, sidebarCollapsed } = useAppStore()
+    const { vaults, currentVault, setCurrentVault, sidebarCollapsed, currentView, setCurrentView } = useAppStore()
     const [showVaultMenu, setShowVaultMenu] = useState(false)
+    const [showInvitesModal, setShowInvitesModal] = useState(false)
+
+    const [pendingInvitesCount, setPendingInvitesCount] = useState(0)
+
+    useEffect(() => {
+        const loadCounts = async () => {
+            try {
+                const token = localStorage.getItem('auth_token') || ''
+                const invites = await window.electronAPI.listInvites('received', token)
+                setPendingInvitesCount(invites.length)
+            } catch (e) {
+                console.error('Failed to load invite count', e)
+            }
+        }
+        loadCounts()
+    }, [])
 
     const handleCreateVault = async () => {
         const name = prompt('Enter vault name:')
@@ -26,7 +43,7 @@ export function Sidebar() {
             // Select new vault
             setCurrentVault(newVault)
         } catch (error: any) {
-            alert('Failed to create vault: ' + error.message)
+            toast.error('Failed to create vault: ' + error.message)
         }
     }
 
@@ -38,15 +55,26 @@ export function Sidebar() {
     if (sidebarCollapsed) {
         return (
             <div className="w-16 bg-dark-900 border-r border-dark-800 flex flex-col items-center py-4">
-                {/* Collapsed sidebar - just icons */}
                 <div className="mb-4 mt-2">
                     <img src={pkpLogo} alt="PKP" className="w-8 h-8 rounded-lg" />
                 </div>
                 <button
                     onClick={() => useAppStore.setState({ sidebarCollapsed: false })}
-                    className="w-10 h-10 flex items-center justify-center hover:bg-dark-800 rounded-lg mb-4"
+                    className="w-10 h-10 flex items-center justify-center hover:bg-dark-800 rounded-lg mb-2"
                 >
-                    <Vault className="w-5 h-5 text-dark-400" />
+                    <KeyRound className="w-5 h-5 text-dark-400" />
+                </button>
+                <button
+                    onClick={() => {
+                        useAppStore.setState({ sidebarCollapsed: false })
+                        setShowInvitesModal(true)
+                    }}
+                    className="w-10 h-10 flex items-center justify-center hover:bg-dark-800 rounded-lg relative"
+                >
+                    <Mail className="w-5 h-5 text-dark-400" />
+                    {pendingInvitesCount > 0 && (
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-primary-500 rounded-full border border-dark-900" />
+                    )}
                 </button>
             </div>
         )
@@ -99,6 +127,7 @@ export function Sidebar() {
                             key={vault.id}
                             onClick={() => {
                                 setCurrentVault(vault)
+                                setCurrentView('vaults')
                                 setShowVaultMenu(false)
                             }}
                             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${vault.id === currentVault?.id
@@ -115,11 +144,43 @@ export function Sidebar() {
 
             {/* Navigation Items */}
             <div className="flex-1 overflow-auto p-4 space-y-1">
-                {/* Quick filters would go here */}
-                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-2">
+                    Team & Sharing
+                </div>
+
+                <button
+                    onClick={() => setShowInvitesModal(true)}
+                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-dark-800 rounded-lg transition-colors text-gray-300 group"
+                >
+                    <div className="flex items-center gap-3">
+                        <Mail className="w-4 h-4 text-dark-400 group-hover:text-primary-400" />
+                        <span className="text-sm font-medium">Invitations</span>
+                    </div>
+                    {pendingInvitesCount > 0 && (
+                        <span className="px-1.5 py-0.5 bg-primary-600 text-[10px] font-bold text-white rounded-full">
+                            {pendingInvitesCount}
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    onClick={() => setCurrentView('teams')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors group ${currentView === 'teams' ? 'bg-primary-600/20 text-primary-400' : 'hover:bg-dark-800 text-gray-300'
+                        }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <Users className={`w-4 h-4 ${currentView === 'teams' ? 'text-primary-400' : 'text-dark-400 group-hover:text-primary-400'}`} />
+                        <span className="text-sm font-medium">Teams</span>
+                    </div>
+                </button>
+
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-6">
                     Quick Access
                 </div>
-                {/* Placeholder for future navigation items */}
+                <button className="w-full flex items-center gap-3 px-3 py-2 hover:bg-dark-800 rounded-lg transition-colors text-gray-300 group">
+                    <ShieldCheck className="w-4 h-4 text-dark-400 group-hover:text-green-400" />
+                    <span className="text-sm font-medium">Security Audit</span>
+                </button>
             </div>
 
             {/* Footer */}
@@ -183,6 +244,12 @@ export function Sidebar() {
                     <span className="text-sm font-medium">Settings</span>
                 </button>
             </div>
+
+            <InvitesModal
+                isOpen={showInvitesModal}
+                onClose={() => setShowInvitesModal(false)}
+                onRefresh={handleRefreshVaults}
+            />
         </div>
     )
 }

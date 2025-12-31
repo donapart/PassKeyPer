@@ -1,0 +1,382 @@
+import React, { useState, useEffect } from 'react'
+import { Users, Plus, Shield, Search, MoreVertical, UserPlus, Trash2, ArrowLeft, Settings } from 'lucide-react'
+import { useAppStore } from '../store/app-store'
+import { toast } from './Toast'
+import { TeamInviteModal } from './TeamInviteModal'
+import { TeamVaultModal } from './TeamVaultModal'
+import { TeamSettingsModal } from './TeamSettingsModal'
+
+interface Team {
+    id: string
+    name: string
+    description: string
+    _count: { members: number; vaults: number }
+}
+
+interface TeamMember {
+    id: string
+    userId: string
+    role: string
+    user: { email: string }
+}
+
+export function TeamsView() {
+    const { setCurrentVault, setCurrentView } = useAppStore()
+    const [teams, setTeams] = useState<Team[]>([])
+    const [selectedTeam, setSelectedTeam] = useState<any>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [showCreateModal, setShowCreateModal] = useState(false)
+    const [showInviteModal, setShowInviteModal] = useState(false)
+    const [showVaultModal, setShowVaultModal] = useState(false)
+    const [showSettingsModal, setShowSettingsModal] = useState(false)
+    const [showPolicyModal, setShowPolicyModal] = useState(false)
+    const [newTeamName, setNewTeamName] = useState('')
+
+    const authToken = localStorage.getItem('auth_token') || ''
+
+    useEffect(() => {
+        loadTeams()
+    }, [])
+
+    const loadTeams = async () => {
+        setIsLoading(true)
+        try {
+            const result = await window.electronAPI.listTeams(authToken)
+            setTeams(result.teams || [])
+        } catch (error) {
+            console.error('Failed to load teams', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleCreateTeam = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newTeamName.trim()) return
+
+        try {
+            await window.electronAPI.createTeam({ name: newTeamName }, authToken)
+            toast.success(`Team "${newTeamName}" created`)
+            setNewTeamName('')
+            setShowCreateModal(false)
+            loadTeams()
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to create team')
+        }
+    }
+
+    const handleSelectTeam = async (team: Team) => {
+        try {
+            const result = await window.electronAPI.getTeam(team.id, authToken)
+            setSelectedTeam(result.team)
+        } catch (error) {
+            console.error('Failed to get team details', error)
+        }
+    }
+
+    const handleRefreshDetails = async () => {
+        if (selectedTeam) {
+            try {
+                const result = await window.electronAPI.getTeam(selectedTeam.id, authToken)
+                setSelectedTeam(result.team)
+            } catch (error) {
+                // If team not found (deleted), go back
+                setSelectedTeam(null)
+            }
+        }
+        loadTeams()
+    }
+
+    if (selectedTeam) {
+        return (
+            <div className="flex-1 flex flex-col animate-fadeIn">
+                <div className="p-6 border-b border-dark-700 bg-dark-800/50 backdrop-blur-md sticky top-0 z-10">
+                    <button
+                        onClick={() => setSelectedTeam(null)}
+                        className="flex items-center gap-2 text-dark-400 hover:text-white transition-colors mb-4"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Teams
+                    </button>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-primary-600/20 rounded-xl flex items-center justify-center border border-primary-500/30">
+                                <Users className="w-6 h-6 text-primary-400" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-white">{selectedTeam.name}</h1>
+                                <p className="text-dark-400">{selectedTeam.description || 'No description provided'}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowPolicyModal(true)}
+                                className="btn-secondary flex items-center gap-2 text-sm"
+                            >
+                                <Shield className="w-4 h-4" />
+                                Policy
+                            </button>
+                            <button
+                                onClick={() => setShowSettingsModal(true)}
+                                className="btn-secondary flex items-center gap-2 text-sm"
+                            >
+                                <Settings className="w-4 h-4" />
+                                Settings
+                            </button>
+                            <button
+                                onClick={() => setShowInviteModal(true)}
+                                className="btn-primary flex items-center gap-2 text-sm shadow-lg shadow-primary-900/20"
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                Add Member
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-auto p-6 space-y-8">
+                    {/* Vaults Section */}
+                    <section>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-dark-400 uppercase tracking-widest flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-primary-500" />
+                                Team Vaults
+                            </h2>
+                            <button
+                                onClick={() => setShowVaultModal(true)}
+                                className="text-xs font-bold text-primary-400 hover:text-primary-300 flex items-center gap-1 transition-colors"
+                            >
+                                <Plus className="w-3 h-3" />
+                                Create Vault
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {selectedTeam.vaults?.length > 0 ? (
+                                selectedTeam.vaults.map((vault: any) => (
+                                    <div
+                                        key={vault.id}
+                                        onClick={() => {
+                                            setCurrentVault(vault)
+                                            setCurrentView('vaults')
+                                        }}
+                                        className="card p-4 flex items-center justify-between group bg-dark-800/30 border-dark-700/30 hover:bg-dark-800/50 hover:border-primary-500/30 transition-all cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-dark-700 rounded-lg flex items-center justify-center text-dark-400 group-hover:text-primary-400 transition-colors">
+                                                <Shield className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-white group-hover:text-primary-400 transition-colors">{vault.name}</p>
+                                                <p className="text-[10px] text-dark-500 uppercase tracking-tighter">Shared Team Vault</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs font-mono text-dark-400">{vault.type}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full p-8 bg-dark-800/20 border border-dashed border-dark-700 rounded-xl flex flex-col items-center justify-center text-center opacity-60">
+                                    <Shield className="w-8 h-8 text-dark-600 mb-2" />
+                                    <p className="text-sm text-dark-500 font-medium">No vaults discovered in this team yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* Members List */}
+                    <section>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-bold text-dark-400 uppercase tracking-widest flex items-center gap-2">
+                                <Users className="w-4 h-4 text-primary-500" />
+                                Members
+                            </h2>
+                            <span className="px-2 py-0.5 bg-dark-700 rounded text-xs text-dark-300">
+                                {selectedTeam.members?.length || 0} Total
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {selectedTeam.members?.map((member: TeamMember) => (
+                                <div key={member.id} className="card p-4 flex items-center justify-between group bg-dark-800/50 border-dark-700/50 hover:border-dark-600 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-dark-700 rounded-full flex items-center justify-center font-bold text-gray-300 shadow-inner">
+                                            {member.user.email[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-white truncate max-w-[140px]">{member.user.email}</p>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${member.role === 'OWNER' ? 'bg-amber-900/30 text-amber-400' :
+                                                member.role === 'ADMIN' ? 'bg-blue-900/30 text-blue-400' :
+                                                    'bg-dark-700/50 text-dark-400'
+                                                }`}>
+                                                {member.role}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button className="text-dark-500 hover:text-red-400 p-1.5 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                <TeamInviteModal
+                    isOpen={showInviteModal}
+                    onClose={() => setShowInviteModal(false)}
+                    teamId={selectedTeam.id}
+                    teamName={selectedTeam.name}
+                    onSuccess={handleRefreshDetails}
+                />
+
+                <TeamVaultModal
+                    isOpen={showVaultModal}
+                    onClose={() => setShowVaultModal(false)}
+                    teamId={selectedTeam.id}
+                    teamName={selectedTeam.name}
+                    onSuccess={handleRefreshDetails}
+                />
+
+                <TeamSettingsModal
+                    isOpen={showSettingsModal}
+                    onClose={() => setShowSettingsModal(false)}
+                    team={selectedTeam}
+                    onSuccess={handleRefreshDetails}
+                />
+
+                <SecurityPolicyModal
+                    isOpen={showPolicyModal}
+                    onClose={() => setShowPolicyModal(false)}
+                    team={selectedTeam}
+                    onSuccess={handleRefreshDetails}
+                />
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex-1 flex flex-col p-6 space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-white">Teams</h1>
+                    <p className="text-dark-400">Collaborate securely with your groups</p>
+                </div>
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-900/20"
+                >
+                    <Plus className="w-5 h-5" />
+                    Create Team
+                </button>
+            </div>
+
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
+                <input
+                    type="text"
+                    placeholder="Search teams..."
+                    className="input pl-11 w-full bg-dark-800/50 focus:bg-dark-800 transition-colors"
+                />
+            </div>
+
+            {isLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+                </div>
+            ) : teams.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-dark-800/20 rounded-2xl border border-dashed border-dark-700">
+                    <div className="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mb-4 shadow-xl border border-dark-700">
+                        <Users className="w-10 h-10 text-dark-600" />
+                    </div>
+                    <h2 className="text-xl font-semibold text-white mb-2">Build Your First Team</h2>
+                    <p className="text-dark-400 max-w-sm mb-6">
+                        Teams let you share vaults with family, friends, or coworkers while maintaining full control.
+                    </p>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="btn-secondary"
+                    >
+                        Learn about Teams
+                    </button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {teams.map((team) => (
+                        <button
+                            key={team.id}
+                            onClick={() => handleSelectTeam(team)}
+                            className="card p-6 text-left hover:border-primary-600 transition-all group relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-primary-600/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary-600/10 transition-colors" />
+
+                            <div className="flex items-start justify-between mb-4 relative">
+                                <div className="w-12 h-12 bg-dark-700/50 rounded-xl flex items-center justify-center text-primary-400 group-hover:bg-primary-600/20 border border-dark-600 group-hover:border-primary-500/30 transition-all">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                                <button className="p-1 px-2 text-dark-500 hover:text-white hover:bg-dark-700 rounded transition-colors">
+                                    <MoreVertical className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1 group-hover:text-primary-400 transition-colors">
+                                {team.name}
+                            </h3>
+                            <p className="text-sm text-dark-400 line-clamp-2 mb-4 h-10">
+                                {team.description || 'Secure collaboration space for your team members.'}
+                            </p>
+                            <div className="flex items-center gap-4 text-xs font-mono font-bold text-dark-500 border-t border-dark-700/50 pt-4">
+                                <span className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                                    {team._count.members} MEMBERS
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full" />
+                                    {team._count.vaults} VAULTS
+                                </span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Create Team Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-dark-800 border border-dark-700 rounded-xl w-full max-w-md animate-slideUp overflow-hidden">
+                        <div className="bg-gradient-to-r from-primary-600/20 to-blue-600/20 p-6 border-b border-dark-700">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                <Plus className="w-5 h-5 text-primary-400" />
+                                Create New Team
+                            </h2>
+                        </div>
+                        <form onSubmit={handleCreateTeam} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-dark-400 mb-2 font-mono uppercase tracking-tighter">Team Name</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={newTeamName}
+                                    onChange={(e) => setNewTeamName(e.target.value)}
+                                    placeholder="e.g. Engineering Team"
+                                    className="input w-full"
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4 font-mono">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="btn-ghost"
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn-primary px-8">
+                                    Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
