@@ -1,0 +1,34 @@
+title: PassKeyPer
+description: Modern Zero-Knowledge Password Manager
+url: https://donapart.github.io
+baseurl: /PassKeyPer
+theme: jekyll-theme-cayman
+
+# GitHub metadata
+repository: donapart/PassKeyPer
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+
+# Plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Exclude files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+# Collections for documentation
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
