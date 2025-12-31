@@ -5,6 +5,10 @@
     "main": "dist-electron/main.js",
     "author": "PassKeyPer Team",
     "license": "AGPL-3.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/donapart/PassKeyPer.git"
+    },
     "scripts": {
         "dev": "vite",
         "build": "vite build",
