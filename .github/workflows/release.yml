@@ -9,22 +9,10 @@ permissions:
     contents: write
 
 jobs:
-    build-desktop:
-        name: Build Desktop (${{ matrix.os }})
-        runs-on: ${{ matrix.os }}
-        strategy:
-            matrix:
-                include:
-                    - os: windows-latest
-                      artifact_name: "*.exe"
-                      asset_name: PassKeyPer-Setup-Windows-x64.exe
-                    - os: macos-latest
-                      artifact_name: "*.dmg"
-                      asset_name: PassKeyPer-macOS-x64.dmg
-                    - os: ubuntu-latest
-                      artifact_name: "*.AppImage"
-                      asset_name: PassKeyPer-Linux-x86_64.AppImage
-
+    build-desktop-windows:
+        name: Build Desktop (Windows)
+        runs-on: windows-latest
+        
         steps:
             - uses: actions/checkout@v4
 
@@ -49,22 +37,22 @@ jobs:
 
             - name: Find and rename artifact
               id: find_artifact
-              shell: bash
+              shell: pwsh
               run: |
-                  ARTIFACT=$(find apps/desktop/release -name "${{ matrix.artifact_name }}" -type f | head -1)
-                  cp "$ARTIFACT" "${{ matrix.asset_name }}"
-                  echo "artifact_path=${{ matrix.asset_name }}" >> $GITHUB_OUTPUT
+                  $ARTIFACT = Get-ChildItem -Path "apps/desktop/release" -Filter "*.exe" -Recurse | Select-Object -First 1
+                  Copy-Item $ARTIFACT.FullName -Destination "PassKeyPer-Setup-Windows-x64.exe"
+                  echo "artifact_path=PassKeyPer-Setup-Windows-x64.exe" >> $env:GITHUB_OUTPUT
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ matrix.asset_name }}
-                  path: ${{ steps.find_artifact.outputs.artifact_path }}
+                  name: PassKeyPer-Setup-Windows-x64.exe
+                  path: PassKeyPer-Setup-Windows-x64.exe
 
-    build-android:
-        name: Build Android APK
+    build-desktop-linux:
+        name: Build Desktop (Linux)
         runs-on: ubuntu-latest
-
+        
         steps:
             - uses: actions/checkout@v4
 
@@ -74,51 +62,35 @@ jobs:
                   node-version: "20.x"
                   cache: "npm"
 
-            - name: Setup Java
-              uses: actions/setup-java@v4
-              with:
-                  distribution: "temurin"
-                  java-version: "17"
-
-            - name: Setup Android SDK
-              uses: android-actions/setup-android@v3
-
             - name: Install dependencies
               run: npm ci
 
             - name: Build packages
               run: npm run build
 
-            - name: Install mobile dependencies
+            - name: Build desktop app
               run: |
-                  cd apps/mobile
-                  npm ci
+                  cd apps/desktop
+                  npm run electron:build
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Generate Android project
+            - name: Find and rename artifact
+              id: find_artifact
               run: |
-                  cd apps/mobile
-                  npx expo prebuild --platform android
-
-            - name: Make gradlew executable
-              run: chmod +x apps/mobile/android/gradlew
-
-            - name: Build Android APK
-              run: |
-                  cd apps/mobile/android
-                  ./gradlew assembleDebug
-
-            - name: Find and rename APK
-              id: find_apk
-              run: |
-                  APK=$(find apps/mobile/android/app/build/outputs/apk -name "*.apk" -type f | head -1)
-                  cp "$APK" PassKeyPer-Android.apk
-                  echo "apk_path=PassKeyPer-Android.apk" >> $GITHUB_OUTPUT
+                  ARTIFACT=$(find apps/desktop/release -name "*.AppImage" -type f | head -1)
+                  if [ -n "$ARTIFACT" ]; then
+                    cp "$ARTIFACT" PassKeyPer-Linux-x86_64.AppImage
+                    echo "artifact_path=PassKeyPer-Linux-x86_64.AppImage" >> $GITHUB_OUTPUT
+                  fi
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
+              if: success()
               with:
-                  name: PassKeyPer-Android.apk
-                  path: PassKeyPer-Android.apk
+                  name: PassKeyPer-Linux-x86_64.AppImage
+                  path: PassKeyPer-Linux-x86_64.AppImage
+                  if-no-files-found: warn
 
     build-extension:
         name: Build Browser Extension
@@ -155,43 +127,9 @@ jobs:
                   name: PassKeyPer-Chrome.zip
                   path: apps/extension/PassKeyPer-Chrome.zip
 
-            - name: Create Firefox manifest
-              run: |
-                  cd apps/extension/dist
-                  node -e "
-                  const fs = require('fs');
-                  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-                  manifest.manifest_version = 2;
-                  manifest.browser_specific_settings = {
-                    gecko: {
-                      id: 'passkeyper@passkeyper.com',
-                      strict_min_version: '109.0'
-                    }
-                  };
-                  if (manifest.background && manifest.background.service_worker) {
-                    manifest.background = { scripts: ['background.js'] };
-                  }
-                  if (manifest.action) {
-                    manifest.browser_action = manifest.action;
-                    delete manifest.action;
-                  }
-                  fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
-                  "
-
-            - name: Package Firefox Extension
-              run: |
-                  cd apps/extension/dist
-                  zip -r ../PassKeyPer-Firefox.zip .
-
-            - name: Upload Firefox artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: PassKeyPer-Firefox.zip
-                  path: apps/extension/PassKeyPer-Firefox.zip
-
     release:
         name: Create Release
-        needs: [build-desktop, build-android, build-extension]
+        needs: [build-desktop-windows, build-desktop-linux, build-extension]
         runs-on: ubuntu-latest
 
         steps:
@@ -204,7 +142,7 @@ jobs:
                   merge-multiple: true
 
             - name: List downloaded artifacts
-              run: ls -la release-assets/
+              run: ls -la release-assets/ || echo "No artifacts found"
 
             - name: Create Release
               uses: softprops/action-gh-release@v1
@@ -213,6 +151,7 @@ jobs:
                   draft: false
                   prerelease: false
                   files: release-assets/*
+                  fail_on_unmatched_files: false
                   body: |
                       ## ✨ PassKeyPer ${{ github.ref_name }}
 
@@ -224,24 +163,21 @@ jobs:
                       | Platform | Download |
                       |----------|----------|
                       | Windows | [PassKeyPer-Setup-Windows-x64.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Setup-Windows-x64.exe) |
-                      | macOS | [PassKeyPer-macOS-x64.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-macOS-x64.dmg) |
                       | Linux | [PassKeyPer-Linux-x86_64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Linux-x86_64.AppImage) |
-
-                      ### Mobile
-                      | Platform | Download |
-                      |----------|----------|
-                      | Android | [PassKeyPer-Android.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Android.apk) |
 
                       ### Browser Extensions
                       | Browser | Download |
                       |---------|----------|
                       | Chrome / Edge | [PassKeyPer-Chrome.zip](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Chrome.zip) |
-                      | Firefox | [PassKeyPer-Firefox.zip](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Firefox.zip) |
 
                       ---
                       
                       **Installation:**
                       - **Desktop**: Run the installer or extract and run
-                      - **Android**: Enable "Install from unknown sources" and install the APK
                       - **Chrome/Edge**: Unzip, go to `chrome://extensions`, enable Developer mode, "Load unpacked"
-                      - **Firefox**: Unzip, go to `about:debugging`, "Load Temporary Add-on"
+                      
+                      ---
+                      
+                      ⚠️ **Note**: macOS and Android builds require manual build. See the [build instructions](https://github.com/${{ github.repository }}#building-from-source) for details.
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
