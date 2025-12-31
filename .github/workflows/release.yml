@@ -5,55 +5,13 @@ on:
         tags:
             - "v*.*.*"
 
+permissions:
+    contents: write
+
 jobs:
-    create-release:
-        name: Create Release
-        runs-on: ubuntu-latest
-        outputs:
-            upload_url: ${{ steps.create_release.outputs.upload_url }}
-            version: ${{ steps.get_version.outputs.version }}
-
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Get version
-              id: get_version
-              run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-            - name: Create Release
-              id: create_release
-              uses: actions/create-release@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  tag_name: ${{ github.ref }}
-                  release_name: PassKeyPer ${{ github.ref }}
-                  draft: false
-                  prerelease: false
-                  body: |
-                      ## ✨ What's New
-
-                      See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-
-                      ## 📦 Downloads
-
-                      ### Desktop
-                      - **Windows**: PassKeyPer-Setup-Windows-x64.exe
-                      - **macOS**: PassKeyPer-macOS-x64.dmg
-                      - **Linux**: PassKeyPer-Linux-x86_64.AppImage
-
-                      ### Mobile
-                      - **Android**: PassKeyPer-Android.apk
-
-                      ### Browser Extensions
-                      - **Chrome/Edge**: PassKeyPer-Chrome.zip (load unpacked or submit to Chrome Web Store)
-                      - **Firefox**: PassKeyPer-Firefox.zip (load as temporary add-on or submit to AMO)
-
     build-desktop:
         name: Build Desktop (${{ matrix.os }})
-        needs: create-release
         runs-on: ${{ matrix.os }}
-
         strategy:
             matrix:
                 include:
@@ -89,26 +47,22 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Find artifact
+            - name: Find and rename artifact
               id: find_artifact
               shell: bash
               run: |
                   ARTIFACT=$(find apps/desktop/release -name "${{ matrix.artifact_name }}" -type f | head -1)
-                  echo "artifact_path=$ARTIFACT" >> $GITHUB_OUTPUT
+                  cp "$ARTIFACT" "${{ matrix.asset_name }}"
+                  echo "artifact_path=${{ matrix.asset_name }}" >> $GITHUB_OUTPUT
 
-            - name: Upload Release Asset
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
               with:
-                  upload_url: ${{ needs.create-release.outputs.upload_url }}
-                  asset_path: ${{ steps.find_artifact.outputs.artifact_path }}
-                  asset_name: ${{ matrix.asset_name }}
-                  asset_content_type: application/octet-stream
+                  name: ${{ matrix.asset_name }}
+                  path: ${{ steps.find_artifact.outputs.artifact_path }}
 
     build-android:
         name: Build Android APK
-        needs: create-release
         runs-on: ubuntu-latest
 
         steps:
@@ -151,32 +105,23 @@ jobs:
             - name: Build Android APK
               run: |
                   cd apps/mobile/android
-                  ./gradlew assembleRelease
-
-            - name: Sign APK (debug key for now)
-              run: |
-                  cd apps/mobile/android
                   ./gradlew assembleDebug
 
-            - name: Find APK
+            - name: Find and rename APK
               id: find_apk
               run: |
                   APK=$(find apps/mobile/android/app/build/outputs/apk -name "*.apk" -type f | head -1)
-                  echo "apk_path=$APK" >> $GITHUB_OUTPUT
+                  cp "$APK" PassKeyPer-Android.apk
+                  echo "apk_path=PassKeyPer-Android.apk" >> $GITHUB_OUTPUT
 
-            - name: Upload Android APK
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
               with:
-                  upload_url: ${{ needs.create-release.outputs.upload_url }}
-                  asset_path: ${{ steps.find_apk.outputs.apk_path }}
-                  asset_name: PassKeyPer-Android.apk
-                  asset_content_type: application/vnd.android.package-archive
+                  name: PassKeyPer-Android.apk
+                  path: PassKeyPer-Android.apk
 
     build-extension:
         name: Build Browser Extension
-        needs: create-release
         runs-on: ubuntu-latest
 
         steps:
@@ -204,20 +149,15 @@ jobs:
                   cd apps/extension/dist
                   zip -r ../PassKeyPer-Chrome.zip .
 
-            - name: Upload Chrome Extension
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Upload Chrome artifact
+              uses: actions/upload-artifact@v4
               with:
-                  upload_url: ${{ needs.create-release.outputs.upload_url }}
-                  asset_path: apps/extension/PassKeyPer-Chrome.zip
-                  asset_name: PassKeyPer-Chrome.zip
-                  asset_content_type: application/zip
+                  name: PassKeyPer-Chrome.zip
+                  path: apps/extension/PassKeyPer-Chrome.zip
 
             - name: Create Firefox manifest
               run: |
                   cd apps/extension/dist
-                  # Convert manifest v3 to v2 for Firefox compatibility
                   node -e "
                   const fs = require('fs');
                   const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
@@ -228,7 +168,7 @@ jobs:
                       strict_min_version: '109.0'
                     }
                   };
-                  if (manifest.background?.service_worker) {
+                  if (manifest.background && manifest.background.service_worker) {
                     manifest.background = { scripts: ['background.js'] };
                   }
                   if (manifest.action) {
@@ -243,12 +183,65 @@ jobs:
                   cd apps/extension/dist
                   zip -r ../PassKeyPer-Firefox.zip .
 
-            - name: Upload Firefox Extension
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Upload Firefox artifact
+              uses: actions/upload-artifact@v4
               with:
-                  upload_url: ${{ needs.create-release.outputs.upload_url }}
-                  asset_path: apps/extension/PassKeyPer-Firefox.zip
-                  asset_name: PassKeyPer-Firefox.zip
-                  asset_content_type: application/zip
+                  name: PassKeyPer-Firefox.zip
+                  path: apps/extension/PassKeyPer-Firefox.zip
+
+    release:
+        name: Create Release
+        needs: [build-desktop, build-android, build-extension]
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: release-assets
+                  merge-multiple: true
+
+            - name: List downloaded artifacts
+              run: ls -la release-assets/
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  name: PassKeyPer ${{ github.ref_name }}
+                  draft: false
+                  prerelease: false
+                  files: release-assets/*
+                  body: |
+                      ## ✨ PassKeyPer ${{ github.ref_name }}
+
+                      See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+                      ## 📦 Downloads
+
+                      ### Desktop
+                      | Platform | Download |
+                      |----------|----------|
+                      | Windows | [PassKeyPer-Setup-Windows-x64.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Setup-Windows-x64.exe) |
+                      | macOS | [PassKeyPer-macOS-x64.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-macOS-x64.dmg) |
+                      | Linux | [PassKeyPer-Linux-x86_64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Linux-x86_64.AppImage) |
+
+                      ### Mobile
+                      | Platform | Download |
+                      |----------|----------|
+                      | Android | [PassKeyPer-Android.apk](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Android.apk) |
+
+                      ### Browser Extensions
+                      | Browser | Download |
+                      |---------|----------|
+                      | Chrome / Edge | [PassKeyPer-Chrome.zip](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Chrome.zip) |
+                      | Firefox | [PassKeyPer-Firefox.zip](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/PassKeyPer-Firefox.zip) |
+
+                      ---
+                      
+                      **Installation:**
+                      - **Desktop**: Run the installer or extract and run
+                      - **Android**: Enable "Install from unknown sources" and install the APK
+                      - **Chrome/Edge**: Unzip, go to `chrome://extensions`, enable Developer mode, "Load unpacked"
+                      - **Firefox**: Unzip, go to `about:debugging`, "Load Temporary Add-on"
