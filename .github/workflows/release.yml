@@ -11,9 +11,14 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             upload_url: ${{ steps.create_release.outputs.upload_url }}
+            version: ${{ steps.get_version.outputs.version }}
 
         steps:
             - uses: actions/checkout@v4
+
+            - name: Get version
+              id: get_version
+              run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
             - name: Create Release
               id: create_release
@@ -32,12 +37,16 @@ jobs:
 
                       ## 📦 Downloads
 
-                      - **Windows**: PassKeyPer-Setup-x64.exe
-                      - **macOS**: PassKeyPer-x64.dmg
-                      - **Linux**: PassKeyPer-x86_64.AppImage
+                      ### Desktop
+                      - **Windows**: PassKeyPer-Setup-Windows-x64.exe
+                      - **macOS**: PassKeyPer-macOS-x64.dmg
+                      - **Linux**: PassKeyPer-Linux-x86_64.AppImage
 
-    build-and-upload:
-        name: Build and Upload
+                      ### Mobile
+                      - **Android**: PassKeyPer-Android.apk
+
+    build-desktop:
+        name: Build Desktop (${{ matrix.os }})
         needs: create-release
         runs-on: ${{ matrix.os }}
 
@@ -45,13 +54,13 @@ jobs:
             matrix:
                 include:
                     - os: windows-latest
-                      artifact_name: PassKeyPer-Setup-*.exe
+                      artifact_name: "*.exe"
                       asset_name: PassKeyPer-Setup-Windows-x64.exe
                     - os: macos-latest
-                      artifact_name: PassKeyPer-*.dmg
+                      artifact_name: "*.dmg"
                       asset_name: PassKeyPer-macOS-x64.dmg
                     - os: ubuntu-latest
-                      artifact_name: PassKeyPer-*.AppImage
+                      artifact_name: "*.AppImage"
                       asset_name: PassKeyPer-Linux-x86_64.AppImage
 
         steps:
@@ -76,12 +85,87 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+            - name: Find artifact
+              id: find_artifact
+              shell: bash
+              run: |
+                  ARTIFACT=$(find apps/desktop/release -name "${{ matrix.artifact_name }}" -type f | head -1)
+                  echo "artifact_path=$ARTIFACT" >> $GITHUB_OUTPUT
+
             - name: Upload Release Asset
               uses: actions/upload-release-asset@v1
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               with:
                   upload_url: ${{ needs.create-release.outputs.upload_url }}
-                  asset_path: apps/desktop/release/${{ matrix.artifact_name }}
+                  asset_path: ${{ steps.find_artifact.outputs.artifact_path }}
                   asset_name: ${{ matrix.asset_name }}
                   asset_content_type: application/octet-stream
+
+    build-android:
+        name: Build Android APK
+        needs: create-release
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Setup Java
+              uses: actions/setup-java@v4
+              with:
+                  distribution: "temurin"
+                  java-version: "17"
+
+            - name: Setup Android SDK
+              uses: android-actions/setup-android@v3
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build packages
+              run: npm run build
+
+            - name: Install mobile dependencies
+              run: |
+                  cd apps/mobile
+                  npm ci
+
+            - name: Generate Android project
+              run: |
+                  cd apps/mobile
+                  npx expo prebuild --platform android
+
+            - name: Make gradlew executable
+              run: chmod +x apps/mobile/android/gradlew
+
+            - name: Build Android APK
+              run: |
+                  cd apps/mobile/android
+                  ./gradlew assembleRelease
+
+            - name: Sign APK (debug key for now)
+              run: |
+                  cd apps/mobile/android
+                  ./gradlew assembleDebug
+
+            - name: Find APK
+              id: find_apk
+              run: |
+                  APK=$(find apps/mobile/android/app/build/outputs/apk -name "*.apk" -type f | head -1)
+                  echo "apk_path=$APK" >> $GITHUB_OUTPUT
+
+            - name: Upload Android APK
+              uses: actions/upload-release-asset@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  upload_url: ${{ needs.create-release.outputs.upload_url }}
+                  asset_path: ${{ steps.find_apk.outputs.apk_path }}
+                  asset_name: PassKeyPer-Android.apk
+                  asset_content_type: application/vnd.android.package-archive

@@ -41,14 +41,14 @@ A zero-knowledge password manager with TOTP, browser extension, and cloud sync.
 
 ### Download
 
-> 🚧 **Pre-built binaries coming soon!** For now, build from source or use Docker.
+| Platform | Download |
+|----------|----------|
+| Windows | [PassKeyPer-Setup-Windows-x64.exe](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Setup-Windows-x64.exe) |
+| macOS | [PassKeyPer-macOS-x64.dmg](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-macOS-x64.dmg) |
+| Linux | [PassKeyPer-Linux-x86_64.AppImage](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Linux-x86_64.AppImage) |
+| Android | [PassKeyPer-Android.apk](https://github.com/donapart/PassKeyPer/releases/latest/download/PassKeyPer-Android.apk) |
 
-| Platform | Status |
-|----------|--------|
-| Windows | 🔜 Coming Soon |
-| macOS | 🔜 Coming Soon |
-| Linux | 🔜 Coming Soon |
-| Android | ✅ [Build from source](https://github.com/donapart/PassKeyPer/tree/main/apps/mobile) |
+> 💡 **No releases yet?** Build from source below or wait for the next tagged release.
 
 ### Build from Source
 
@@ -59,7 +59,7 @@ cd PassKeyPer
 npm install
 
 # Desktop App
-cd apps/desktop && npm run build
+cd apps/desktop && npm run electron:build
 
 # Mobile App (Android)
 cd apps/mobile && npx expo run:android
