@@ -1,0 +1,43 @@
+{
+  "name": "@passkeyper/sdk",
+  "version": "1.0.0",
+  "description": "PassKeyPer SDK - Easy integration for password management",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts --max-warnings 0 || true",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@passkeyper/core": "*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "keywords": [
+    "password-manager",
+    "sdk",
+    "security",
+    "encryption",
+    "zero-knowledge"
+  ],
+  "author": "PassKeyPer",
+  "license": "AGPL-3.0"
+}

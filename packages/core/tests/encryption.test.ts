@@ -14,7 +14,7 @@ describe('Encryption', () => {
 
     it('should encrypt and decrypt binary data', async () => {
         const plaintext = new Uint8Array([1, 2, 3, 4, 5])
-        const key = generateEncyptionKey()
+        const key = generateEncryptionKey()
 
         const encrypted = await encrypt(plaintext, key)
         const decrypted = await decrypt(encrypted, key)

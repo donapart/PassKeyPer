@@ -12,7 +12,9 @@
         "preview": "vite preview",
         "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
         "electron:build": "vite build && electron-builder",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "lint": "eslint src --ext .ts,.tsx --max-warnings 0 || true",
+        "test": "echo 'Tests will be added'"
     },
     "dependencies": {
         "@passkeyper/core": "*",

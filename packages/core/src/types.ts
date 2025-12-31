@@ -406,3 +406,60 @@ export interface ExportOptions {
     encrypted: boolean
     password?: string
 }
+
+// ============================================================================
+// WebAuthn / Passkey Types
+// ============================================================================
+
+export interface PublicKeyCredentialCreationOptionsJSON {
+    challenge: string
+    rp: {
+        name: string
+        id?: string
+    }
+    user: {
+        id: string
+        name: string
+        displayName: string
+    }
+    pubKeyCredParams: Array<{
+        type: 'public-key'
+        alg: number
+    }>
+    authenticatorSelection?: {
+        authenticatorAttachment?: 'platform' | 'cross-platform'
+        requireResidentKey?: boolean
+        residentKey?: 'discouraged' | 'preferred' | 'required'
+        userVerification?: 'required' | 'preferred' | 'discouraged'
+    }
+    attestation?: 'none' | 'indirect' | 'direct' | 'enterprise'
+    excludeCredentials?: Array<{
+        type: 'public-key'
+        id: string
+        transports?: Array<'usb' | 'nfc' | 'ble' | 'internal' | 'hybrid'>
+    }>
+    timeout?: number
+}
+
+export interface PublicKeyCredentialRequestOptionsJSON {
+    challenge: string
+    rpId?: string
+    allowCredentials?: Array<{
+        type: 'public-key'
+        id: string
+        transports?: Array<'usb' | 'nfc' | 'ble' | 'internal' | 'hybrid'>
+    }>
+    userVerification?: 'required' | 'preferred' | 'discouraged'
+    timeout?: number
+}
+
+export interface PasskeyCredential {
+    id: string
+    userId: string
+    credentialId: string
+    publicKey: string
+    signCount: number
+    deviceName: string
+    createdAt: Date
+    lastUsedAt?: Date
+}

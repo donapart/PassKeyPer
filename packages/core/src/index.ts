@@ -45,3 +45,14 @@ export {
     encryptKey,
     decryptKey,
 } from './crypto/public-key'
+
+// WebAuthn / Passkey support
+export {
+    isWebAuthnAvailable,
+    isPlatformAuthenticatorAvailable,
+    isConditionalMediationAvailable,
+    registerPasskey,
+    authenticateWithPasskey,
+    abortWebAuthn,
+    createPasskeyOptions,
+} from './crypto/webauthn'
